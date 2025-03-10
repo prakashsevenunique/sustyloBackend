@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 // ✅ Middleware to Protect Routes
 const protect = (req, res, next) => {
     try {
-        const token = req.headers.authorization;
+        const token= req.headers.authorization;
 
         if (!token || !token.startsWith("Bearer ")) {
             return res.status(401).json({ message: "Unauthorized: Token missing or invalid format" });
