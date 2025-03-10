@@ -1,0 +1,21 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Optional: Ignore environment variables file
+.env
+
+# Optional: Ignore package lock files (only if you don't want them tracked)
+package-lock.json
+yarn.lock
+
+# Optional: Ignore build or output directories
+dist/
+build/
+
+# Optional: Ignore coverage directory (if using testing frameworks)
+coverage/
