@@ -1,82 +1,102 @@
-const { Owner, Salon } = require("../models/salon");
-const { generateOTP, sendOTP } = require("../utils/otpService");
+const Salon = require("../models/Salon");
+const haversine = require("haversine-distance");
 
-// Send OTP for Owner Login
-exports.sendSalonOTP = async (req, res) => {
-    const { phone, name, email, panCard, aadhar, bankDetails } = req.body;
-    if (!phone) return res.status(400).json({ error: "Phone number required" });
-  
-    const otp = generateOTP();
-  
-    let owner = await Owner.findOne({ phone });
-  
-    if (!owner) {
-      if (!name || !email || !panCard || !aadhar || !bankDetails || !bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.bankName) {
-        return res.status(400).json({ error: "All owner details are required for registration" });
-      }
-  
-      owner = new Owner({
-        phone,
-        name,
-        email,
-        panCard,
-        aadhar,
-        bankDetails,
-        otp,
-        otpExpiry: new Date(Date.now() + 5 * 60000),
-      });
-    } else {
-      owner.otp = otp;
-      owner.otpExpiry = new Date(Date.now() + 5 * 60000);
+// ✅ Register Salon (Owner fills basic details)
+exports.registerSalon = async (req, res) => {
+    try {
+        const { ownerName, salonName, mobile, email, salonAddress, latitude, longitude } = req.body;
+
+        if (!latitude || !longitude) {
+            return res.status(400).json({ message: "Latitude and Longitude are required." });
+        }
+
+        // Check if salon with the same mobile already exists
+        const existingSalon = await Salon.findOne({ mobile });
+        if (existingSalon) return res.status(400).json({ message: "Salon with this mobile number already exists." });
+
+        const newSalon = new Salon({ ownerName, salonName, mobile, email, salonAddress, latitude, longitude });
+        await newSalon.save();
+
+        res.status(201).json({ message: "Salon registration request sent. Awaiting admin approval.", salon: newSalon });
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
-  
-    await owner.save();
-    const otpResponse = await sendOTP(phone, otp);
-    res.json(otpResponse);
-  };
-
-// Verify OTP for Owner Login
-exports.verifySalonOTP = async (req, res) => {
-  const { phone, otp } = req.body;
-
-  const owner = await Owner.findOne({ phone });
-  if (!owner || owner.otp !== otp || new Date() > owner.otpExpiry) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
-  }
-
-  owner.otp = null;
-  owner.otpExpiry = null;
-  await owner.save();
-
-  res.json({ message: "Salon Owner Login successful", owner });
 };
 
-// Register Salon (Goes for Admin Approval)
-exports.createSalon = async (req, res) => {
-  const { name, owner, location, services, gstNumber } = req.body;
+// ✅ Admin Updates Salon (Approval Process)
+exports.updateSalon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
 
-  const foundOwner = await Owner.findById(owner);
-  if (!foundOwner) return res.status(404).json({ error: "Owner not found" });
+        const updatedSalon = await Salon.findByIdAndUpdate(id, updateData, { new: true });
 
-  const newSalon = new Salon({
-    name,
-    owner,
-    location,
-    services,
-    gstNumber,
-    status: "pending", // Pending admin approval
-  });
+        if (!updatedSalon) return res.status(404).json({ message: "Salon not found." });
 
-  await newSalon.save();
-  res.json({ message: "Salon registration request sent for approval!" });
+        res.status(200).json({ message: "Salon details updated successfully.", salon: updatedSalon });
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
 };
 
-// Admin Approves Salon
-exports.approveSalon = async (req, res) => {
-  const { salonId } = req.body;
+// ✅ Get Salon by ID
+exports.getSalonById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const salon = await Salon.findById(id);
+        
+        if (!salon) return res.status(404).json({ message: "Salon not found." });
 
-  const salon = await Salon.findByIdAndUpdate(salonId, { status: "approved" }, { new: true });
-  if (!salon) return res.status(404).json({ error: "Salon not found" });
+        res.status(200).json({ salon });
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
 
-  res.json({ message: "Salon approved successfully!", salon });
+// ✅ Get All Salons (With Status Filter)
+exports.getAllSalons = async (req, res) => {
+    try {
+        const { status } = req.query;
+        let query = {};
+
+        if (status) {
+            if (!["pending", "approved"].includes(status)) {
+                return res.status(400).json({ message: "Invalid status. Use 'pending' or 'approved'." });
+            }
+            query.status = status;
+        }
+
+        const salons = await Salon.find(query);
+
+        res.status(200).json({ count: salons.length, salons });
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+// ✅ Get Nearby Salons Based on User Location
+exports.getNearbySalons = async (req, res) => {
+    try {
+        const { latitude, longitude, maxDistance = 5000 } = req.query; // Default max distance = 5km
+
+        if (!latitude || !longitude) {
+            return res.status(400).json({ message: "Latitude and Longitude are required." });
+        }
+
+        const userLocation = { latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
+
+        // Fetch salons that have valid latitude & longitude
+        const salons = await Salon.find({ latitude: { $ne: null }, longitude: { $ne: null } });
+
+        // Filter salons within maxDistance using Haversine formula
+        const nearbySalons = salons.filter((salon) => {
+            const salonLocation = { latitude: salon.latitude, longitude: salon.longitude };
+            const distance = haversine(userLocation, salonLocation);
+            return distance <= maxDistance; // Return salons within maxDistance meters
+        });
+
+        res.status(200).json({ count: nearbySalons.length, salons: nearbySalons });
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
 };

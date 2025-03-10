@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const { generateOTP, sendOTP } = require("../utils/otpService");
 
-// Send OTP for Registration/Login
+// ✅ Send OTP for Registration/Login
 exports.sendOTP = async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: "Phone number required" });
@@ -22,7 +22,7 @@ exports.sendOTP = async (req, res) => {
   res.json(otpResponse);
 };
 
-// Verify OTP & Login
+// ✅ Verify OTP & Login
 exports.verifyOTP = async (req, res) => {
   const { phone, otp, latitude, longitude } = req.body;
 
@@ -44,7 +44,7 @@ exports.verifyOTP = async (req, res) => {
   res.json({ message: "Login successful", user });
 };
 
-// Update User Location (Called when app opens)
+// ✅ Update User Location (Every login)
 exports.updateLocation = async (req, res) => {
   const { phone, latitude, longitude } = req.body;
 
@@ -63,4 +63,52 @@ exports.updateLocation = async (req, res) => {
   }
 
   res.json({ message: "Location updated successfully", location: user.location });
+};
+
+// ✅ Update user profile
+exports.updateUserProfile = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, gender } = req.body;
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      id,
+      { name, email, gender },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// ✅ Get All Users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().populate("wallet");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// ✅ Get user by ID
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).populate("wallet");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
 };

@@ -1,27 +1,36 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const connectDB = require("./config/db");
+const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const errorHandler = require("./authMiddleware/errorMiddleware");
-const morgan = require("morgan"); // Added for logging
+const morgan = require("morgan");
+const errorHandler = require("./authMiddleware/errorMiddleware"); // Ensure correct path
+const userRoutes = require("./routes/userRoutes");
 
-// Load environment variables
-dotenv.config({ path: ".env" });
+dotenv.config();
 
-// Connect to database
-connectDB();
+// ✅ Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB Connected Successfully"))
+.catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
+    process.exit(1);
+});
 
+// ✅ Initialize Express App
 const app = express();
 
-// Middleware
+// ✅ Middleware
 app.use(express.json());
 app.use(cors());
 app.use(helmet());
-app.use(morgan("dev")); // Logs requests
+app.use(morgan("dev"));
 
-// Rate Limiting (100 requests per 10 minutes per IP)
+// ✅ Rate Limiting
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
   max: 100,
@@ -29,17 +38,22 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Routes
+// ✅ Routes
+app.use("/api/user", userRoutes);
 app.use("/api/admin", require("./routes/adminRoutes"));
-app.use("/api/user", require("./routes/userRoutes"));
-app.use("/api/salon", require("./routes/salonRoutes"));
-app.use("/api/booking", require("./routes/bookingRoutes"));
-app.use("/api/payment", require("./routes/paymentRoutes"));
-app.use("/api/wallet", require("./routes/walletRoutes"));
+app.use("/api/salon", require("./routes/salonRoutes"));  // Salon API Added
+// app.use("/api/booking", require("./routes/bookingRoutes"));
+// app.use("/api/payment", require("./routes/paymentRoutes"));
+// app.use("/api/wallet", require("./routes/walletRoutes"));
 
-// Error Handling Middleware
+// ✅ Default Route
+app.get("/", (req, res) => {
+    res.send("Welcome to the API. Server is running!");
+});
+
+// ✅ Error Handling Middleware
 app.use(errorHandler);
 
-// Start Server
+// ✅ Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

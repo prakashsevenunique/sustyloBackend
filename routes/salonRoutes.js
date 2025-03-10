@@ -1,10 +1,20 @@
 const express = require("express");
-const { sendSalonOTP, verifySalonOTP, createSalon, approveSalon } = require("../controllers/salonController");
 const router = express.Router();
+const { registerSalon, updateSalon, getSalonById, getAllSalons, getNearbySalons } = require("../controllers/salonController");
 
-router.post("/send-otp", sendSalonOTP);
-router.post("/verify-otp", verifySalonOTP);
-router.post("/register", createSalon); // Salon Registration (Admin Approval)
-router.post("/approve", approveSalon); // Admin Approves Salon
+// ✅ Get Nearby Salons (MUST be before /:id)
+router.get("/nearby", getNearbySalons);
+
+// ✅ Register Salon
+router.post("/register", registerSalon);
+
+// ✅ Admin Updates Salon
+router.put("/update/:id", updateSalon);
+
+// ✅ Get All Salons (With Status Filter)
+router.get("/", getAllSalons);
+
+// ✅ Get Salon by ID (Keep this last)
+router.get("/:id", getSalonById);
 
 module.exports = router;

@@ -1,43 +1,33 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose"); // ✅ Import mongoose
 
-// Owner Schema
-const ownerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+const SalonSchema = new mongoose.Schema({
+  ownerName: { type: String, required: true },
+  salonName: { type: String, required: true },
+  mobile: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true, unique: true },
-  otp: String,
-  otpExpiry: Date,
-  panCard: { type: String, required: true },
-  aadhar: { type: String, required: true },
-  bankDetails: {
-    accountNumber: { type: String, required: true },
-    ifscCode: { type: String, required: true },
-    bankName: { type: String, required: true },
-  },
-  photos: [{ type: String }],
-  createdAt: { type: Date, default: Date.now },
-});
-
-// Salon Schema
-const salonSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true },
-  location: { type: String, required: true },
+  salonAddress: { type: String, required: true },
+  latitude: { type: Number, required: true },  // ✅ Add this if missing
+  longitude: { type: Number, required: true }, // ✅ Add this if missing
+  status: { type: String, enum: ["pending", "approved"], default: "pending" },
+  services: [
+    {
+      name: String,
+      rate: Number,
+      duration: String,
+      gender: { type: String, enum: ["male", "female", "unisex"] }
+    },
+  ],
   locationMapUrl: { type: String },
-  services: [{
-    name: { type: String, required: true },
-    price: { type: Number, required: true },
-    duration: { type: String, required: true },
-    gender: { type: String, enum: ["male", "female", "unisex"], required: true },
-  }],
   gstNumber: { type: String },
   salonAgreement: { type: String },
-  photos: [{ type: String }],
-  status: { type: String, enum: ["pending", "approved"], default: "pending" }, // Admin must approve
-  createdAt: { type: Date, default: Date.now },
-});
+  salonPhotos: [String],
+  bankDetails: {
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String
+  },
+  ownerAadhar: { type: String },
+  ownerPan: { type: String }
+}, { timestamps: true });
 
-const Owner = mongoose.model("Owner", ownerSchema);
-const Salon = mongoose.model("Salon", salonSchema);
-
-module.exports = { Owner, Salon };
+module.exports = mongoose.model("Salon", SalonSchema);

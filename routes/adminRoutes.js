@@ -1,8 +1,8 @@
 const express = require("express");
-const { protect, authorizeRoles } = require("../authMiddleware/authMiddleware");
+const { protect, authorizeRoles, authorizeSuperAdmin } = require("../authMiddleware/authMiddleware");
 const {
-    sendAdminOTP,
-    verifyAdminOTP,
+    registerAdmin, 
+    loginAdmin,
     getAllUsers,
     getAllShopOwners,
     updateShopOwner,
@@ -16,23 +16,23 @@ const {
 
 const router = express.Router();
 
-// ✅ Admin OTP Login
-router.post("/send-otp", sendAdminOTP);
-router.post("/verify-otp", verifyAdminOTP);
+// ✅ Admin Authentication Routes
+router.post("/login", loginAdmin);
+router.post("/register", registerAdmin); // ✅ Only Super Admin can register new admins
 
-// ✅ User Management
-router.get("/users", protect, authorizeRoles, getAllUsers);
-router.get("/shop-owners", protect, authorizeRoles, getAllShopOwners);
-router.put("/shop-owner/:id/status", protect, authorizeRoles, updateShopOwner);
+// ✅ User Management Routes
+router.get("/users", protect, authorizeRoles("super_admin", "admin"), getAllUsers);
+router.get("/shop-owners", protect, authorizeRoles("super_admin", "admin"), getAllShopOwners);
+router.put("/shop-owner/:id/status", protect, authorizeRoles("super_admin", "admin"), updateShopOwner);
 
-// ✅ Salon Management
-router.get("/shop-requests", protect, authorizeRoles, getPendingSalonRequests);
-router.put("/shop-request/:id/status", protect, authorizeRoles, updateSalonStatus);
+// ✅ Salon Management Routes
+router.get("/shop-requests", protect, authorizeRoles("super_admin", "admin"), getPendingSalonRequests);
+router.put("/shop-request/:id/status", protect, authorizeRoles("super_admin", "admin"), updateSalonStatus);
 
-// ✅ Wallet & Reports
-router.get("/shop-wallets", protect, authorizeRoles, getAllShopWallets);
-router.get("/reports/shop-owner/:ownerId/payin", protect, authorizeRoles, getShopOwnerPayInReport);
-router.get("/reports/shop-owner/:ownerId/payout", protect, authorizeRoles, getShopOwnerPayoutReport);
-router.get("/reports/users/payin", protect, authorizeRoles, getAllUserPayInReport);
+// ✅ Wallet & Reports Routes
+router.get("/shop-wallets", protect, authorizeRoles("super_admin", "admin"), getAllShopWallets);
+router.get("/reports/shop-owner/:ownerId/payin", protect, authorizeRoles("super_admin", "admin"), getShopOwnerPayInReport);
+router.get("/reports/shop-owner/:ownerId/payout", protect, authorizeRoles("super_admin", "admin"), getShopOwnerPayoutReport);
+router.get("/reports/users/payin", protect, authorizeRoles("super_admin", "admin"), getAllUserPayInReport);
 
 module.exports = router;

@@ -1,33 +1,34 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
-// Function to generate a 6-digit OTP
+// Generate a 6-digit OTP
 const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Function to send OTP via Email
-const sendOTP = async (email, otp) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER, // Your email (info@7unique.in)
-      pass: process.env.EMAIL_PASS, // Your email app password
-    },
-  });
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Your OTP Code",
-    text: `Your OTP code is: ${otp}`,
-  };
-
+// Send OTP via Fast2SMS
+const sendOTP = async (phone, otp) => {
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📩 OTP sent to ${email}`);
-    return { success: true, message: "OTP sent successfully" };
+    const response = await axios.post(
+      "https://www.fast2sms.com/dev/bulkV2",
+      {
+        route: "dlt", // Correct route
+        sender_id: "FINUNI", // Required sender ID
+        message: "178946", // Template ID from Fast2SMS
+        variables_values: otp, // OTP to be sent
+        flash: 0,
+        numbers: phone, // User's phone number
+      },
+      {
+        headers: {
+          Authorization: "tzg6ZUWkBAIUwoDHyL9vIJcMGnFqUPbkvL2Jw8irMZZ4GDCenBXBsbODOez5",
+          "Content-Type": "application/json", // Required for JSON requests
+        },
+      }
+    );
+
+    return { success: true, message: "OTP sent successfully", response: response.data };
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
+    console.error("OTP sending failed:", error.response?.data || error.message);
     return { success: false, message: "Failed to send OTP" };
   }
 };

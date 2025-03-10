@@ -1,59 +1,75 @@
-const Admin = require("../models/Admin");
-const User = require("../models/User");
-const Salon = require("../models/salon");
-const Wallet = require("../models/Wallet");
-const Booking = require("../models/Booking");
-const Payment = require("../models/payment");
-const { generateOTP } = require("../utils/otpService");
-const sendEmail = require("../utils/sendEmail");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const Admin = require("../models/admin");
+const User = require("../models/User");
+// const Salon = require("../models/salon");
+const Wallet = require("../models/Wallet");
+const Payment = require("../models/payment");
 
-// ✅ Send OTP to Admin Email
-exports.sendAdminOTP = async (req, res) => {
-    const { email } = req.body;
-
-    if (!email) return res.status(400).json({ error: "Email is required" });
-
-    const admin = await Admin.findOne({ email });
-
-    if (!admin) return res.status(404).json({ error: "Admin not found" });
-
-    const otp = generateOTP();
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-
-    await Admin.updateOne({ _id: admin._id }, { otp, otpExpiry });
-
+// ✅ Register Admin & Generate Token
+exports.registerAdmin = async (req, res) => {
     try {
-        await sendEmail(email, "Admin Login OTP", `Your OTP is: ${otp}\n\nThis OTP is valid for 5 minutes.`);
-        res.json({ success: true, message: "OTP sent to admin email. OTP expires in 5 minutes." });
+        const { name, email, password } = req.body;
+        
+        // ✅ Check if an admin already exists
+        let admin = await Admin.findOne();
+
+        if (admin) {
+            return res.status(400).json({ message: "Admin already registered. Please log in." });
+        }
+
+        // ✅ Hash Password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // ✅ Save First Admin in Database
+        admin = new Admin({
+            name,
+            email,
+            password: hashedPassword,
+            role: "super_admin", // First admin is Super Admin
+            isActive: true
+        });
+
+        await admin.save();
+
+        // ✅ Generate Token After Registration
+        const token = jwt.sign(
+            { id: admin._id, role: admin.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "1d" }
+        );
+
+        res.status(201).json({
+            message: "Admin registered successfully.",
+            admin,
+            token
+        });
+
     } catch (error) {
-        console.error("Email sending failed:", error);
-        res.status(500).json({ error: "Failed to send OTP" });
+        res.status(500).json({ message: "Error registering admin", error: error.message });
     }
 };
 
+// ✅ Admin Login
+exports.loginAdmin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const admin = await Admin.findOne({ email });
 
-// ✅ Verify OTP & Login Admin
-exports.verifyAdminOTP = async (req, res) => {
-    const { email, otp } = req.body;
+        if (!admin) return res.status(404).json({ message: "Admin not found." });
+        if (!admin.isActive) return res.status(403).json({ message: "Account inactive. Contact Super Admin." });
 
-    const admin = await Admin.findOne({ email });
-    if (!admin || admin.otp !== otp || new Date() > admin.otpExpiry) {
-        return res.status(400).json({ error: "Invalid or expired OTP" });
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
+
+        res.json({ message: "Login successful", admin });
+
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
-
-    // Generate JWT Token
-    const token = jwt.sign({ id: admin._id, role: admin.role }, process.env.JWT_SECRET, { expiresIn: "2h" });
-
-    // Clear OTP after successful login
-    admin.otp = null;
-    admin.otpExpiry = null;
-    await admin.save();
-
-    res.json({ success: true, message: "Login successful", token, admin });
 };
 
-// ✅ Existing Admin APIs (No Changes)
+// ✅ Fetch All Users (User Management)
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.find({ role: "user" }).select("-password");
@@ -63,6 +79,7 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+// ✅ Fetch All Shop Owners
 exports.getAllShopOwners = async (req, res) => {
     try {
         const owners = await User.find({ role: "shopOwner" }).select("-password");
@@ -72,6 +89,7 @@ exports.getAllShopOwners = async (req, res) => {
     }
 };
 
+// ✅ Update Shop Owner Details
 exports.updateShopOwner = async (req, res) => {
     try {
         const { id } = req.params;
@@ -87,7 +105,7 @@ exports.updateShopOwner = async (req, res) => {
     }
 };
 
-// ✅ Shop Registration Requests
+// ✅ Fetch Pending Salon Requests
 exports.getPendingSalonRequests = async (req, res) => {
     try {
         const salons = await Salon.find({ status: "pending" });
@@ -97,6 +115,7 @@ exports.getPendingSalonRequests = async (req, res) => {
     }
 };
 
+// ✅ Update Salon Status
 exports.updateSalonStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -112,7 +131,7 @@ exports.updateSalonStatus = async (req, res) => {
     }
 };
 
-// ✅ Wallet & Payment Reports
+// ✅ Fetch All Wallets
 exports.getAllShopWallets = async (req, res) => {
     try {
         const wallets = await Wallet.find().populate("user", "name email phone");
@@ -122,6 +141,7 @@ exports.getAllShopWallets = async (req, res) => {
     }
 };
 
+// ✅ Fetch Pay-in Report for Shop Owner
 exports.getShopOwnerPayInReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
@@ -132,6 +152,7 @@ exports.getShopOwnerPayInReport = async (req, res) => {
     }
 };
 
+// ✅ Fetch Payout Report for Shop Owner
 exports.getShopOwnerPayoutReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
@@ -142,6 +163,7 @@ exports.getShopOwnerPayoutReport = async (req, res) => {
     }
 };
 
+// ✅ Fetch Pay-in Report for All Users
 exports.getAllUserPayInReport = async (req, res) => {
     try {
         const payments = await Payment.find({ type: "payin" }).populate("user", "name email phone");
