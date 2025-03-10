@@ -1,4 +1,4 @@
-const Salon = require("../models/Salon");
+const Salon = require("../models/salon");
 const haversine = require("haversine-distance");
 
 // ✅ Register Salon (Owner fills basic details)
