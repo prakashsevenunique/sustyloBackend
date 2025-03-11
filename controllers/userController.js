@@ -68,12 +68,30 @@ exports.updateLocation = async (req, res) => {
 // ✅ Update user profile
 exports.updateUserProfile = async (req, res) => {
   const { id } = req.params;
-  const { name, email, gender } = req.body;
+  const { name, email, gender, phone, address, location } = req.body;
+
+  // Basic validation to ensure name and email are provided
+  if (!name || !email) {
+    return res.status(400).json({ error: "Name and email are required" });
+  }
+
+  // If phone is provided, validate it
+  if (phone && phone.length !== 10) {
+    return res.status(400).json({ error: "Invalid phone number" });
+  }
 
   try {
+    // Find user and update details
     const user = await User.findByIdAndUpdate(
       id,
-      { name, email, gender },
+      { 
+        name,
+        email,
+        gender,
+        phone,
+        address,
+        location
+      },
       { new: true }
     );
 
@@ -81,8 +99,10 @@ exports.updateUserProfile = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Send success response with updated user data
     res.json({ message: "Profile updated successfully", user });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 };

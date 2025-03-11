@@ -1,4 +1,4 @@
-const mongoose = require("mongoose"); // ✅ Import mongoose
+const mongoose = require("mongoose");
 
 const SalonSchema = new mongoose.Schema({
   ownerName: { type: String, required: true },
@@ -27,7 +27,8 @@ const SalonSchema = new mongoose.Schema({
     bankName: String
   },
   ownerAadhar: { type: String },
-  ownerPan: { type: String }
+  ownerPan: { type: String },
+  category: { type: String },  // Optional field for salon category (e.g., "beauty", "hair", etc.)
 }, { timestamps: true });
 
 module.exports = mongoose.model("Salon", SalonSchema);

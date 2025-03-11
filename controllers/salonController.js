@@ -5,11 +5,7 @@ const haversine = require("haversine-distance");
 // ✅ Register Salon (Owner fills basic details)
 exports.registerSalon = async (req, res) => {
     try {
-        const { ownerName, salonName, mobile, email, salonAddress, latitude, longitude } = req.body;
-
-        if (!latitude || !longitude) {
-            return res.status(400).json({ message: "Latitude  and Longitude are required." });
-        }
+        const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
         // Check if salon with the same mobile already exists
         const existingSalon = await Salon.findOne({ mobile });
@@ -78,22 +74,42 @@ exports.getAllSalons = async (req, res) => {
 // ✅ Get Nearby Salons Based on User Location
 exports.getNearbySalons = async (req, res) => {
     try {
-        const { latitude, longitude, maxDistance = 5000 } = req.query; // Default max distance = 5km
+        const { latitude, longitude, maxDistance = 5000, gender, category } = req.query; // Default max distance = 5km
 
+        // Validate latitude and longitude are provided
         if (!latitude || !longitude) {
             return res.status(400).json({ message: "Latitude and Longitude are required." });
+        }
+
+        // Convert maxDistance to a number (in case it's passed as a string)
+        const maxDistanceInMeters = parseFloat(maxDistance);
+        if (isNaN(maxDistanceInMeters)) {
+            return res.status(400).json({ message: "Invalid maxDistance value." });
         }
 
         const userLocation = { latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
 
         // Fetch salons that have valid latitude & longitude
-        const salons = await Salon.find({ latitude: { $ne: null }, longitude: { $ne: null } });
+        const query = { latitude: { $ne: null }, longitude: { $ne: null } };
+
+        // Add gender filter if provided
+        if (gender) {
+            query['services.gender'] = gender;
+        }
+
+        // Add category filter if provided (assuming 'category' is a field or tag in your data model)
+        if (category) {
+            query['category'] = category;
+        }
+
+        // Fetch salons from database with applied filters
+        const salons = await Salon.find(query);
 
         // Filter salons within maxDistance using Haversine formula
         const nearbySalons = salons.filter((salon) => {
             const salonLocation = { latitude: salon.latitude, longitude: salon.longitude };
             const distance = haversine(userLocation, salonLocation);
-            return distance <= maxDistance; // Return salons within maxDistance meters
+            return distance <= maxDistanceInMeters; // Return salons within maxDistance meters
         });
 
         res.status(200).json({ count: nearbySalons.length, salons: nearbySalons });

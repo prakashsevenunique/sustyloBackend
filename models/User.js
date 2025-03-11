@@ -11,6 +11,9 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
+  name: { type: String, required: true }, // Name field
+  email: { type: String, required: true, unique: true }, // Email field
+  address: String,  // Optional field for address
 });
 
 module.exports = mongoose.model("User", userSchema);
