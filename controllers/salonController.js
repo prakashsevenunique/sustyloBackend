@@ -11,7 +11,7 @@ exports.registerSalon = async (req, res) => {
         const existingSalon = await Salon.findOne({ mobile });
         if (existingSalon) return res.status(400).json({ message: "Salon with this mobile number already exists." });
 
-        const newSalon = new Salon({ ownerName, salonName, mobile, email, salonAddress, latitude, longitude });
+        const newSalon = new Salon({ ownerName, salonName, mobile, email, salonAddress });
         await newSalon.save();
 
         res.status(201).json({ message: "Salon registration request sent. Awaiting admin approval.", salon: newSalon });

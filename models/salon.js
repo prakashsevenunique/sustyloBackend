@@ -6,8 +6,8 @@ const SalonSchema = new mongoose.Schema({
   mobile: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   salonAddress: { type: String, required: true },
-  latitude: { type: Number, required: true },  // ✅ Add this if missing
-  longitude: { type: Number, required: true }, // ✅ Add this if missing
+  latitude: { type: Number },  // ✅ Add this if missing
+  longitude: { type: Number }, // ✅ Add this if missing
   status: { type: String, enum: ["pending", "approved"], default: "pending" },
   services: [
     {
