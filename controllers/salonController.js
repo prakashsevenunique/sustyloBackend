@@ -5,11 +5,8 @@ const haversine = require("haversine-distance");
 // ✅ Register Salon (Owner fills basic details)
 exports.registerSalon = async (req, res) => {
     try {
-        const { ownerName, salonName, mobile, email, salonAddress, latitude, longitude } = req.body;
+        const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
-        if (!latitude || !longitude) {
-            return res.status(400).json({ message: "Latitude  and Longitude are required." });
-        }
 
         // Check if salon with the same mobile already exists
         const existingSalon = await Salon.findOne({ mobile });
