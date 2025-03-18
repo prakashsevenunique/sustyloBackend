@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerSalon, updateSalon, getSalonById, getAllSalons, getNearbySalons } = require("../controllers/salonController");
+const { registerSalon, updateSalon, getSalonById, getAllSalons, getNearbySalons, addReview } = require("../controllers/salonController");
 
 // ✅ Get Nearby Salons (MUST be before /:id)
 router.get("/nearby", getNearbySalons);
@@ -13,8 +13,10 @@ router.put("/update/:id", updateSalon);
 
 // ✅ Get All Salons (With Status Filter)
 router.get("/", getAllSalons);
-
+    
 // ✅ Get Salon by ID (Keep this last)
 router.get("/:id", getSalonById);
+
+router.post("/salon/:salonId/review", addReview);
 
 module.exports = router;

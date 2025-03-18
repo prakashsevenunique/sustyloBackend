@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const errorHandler = require("./authMiddleware/errorMiddleware"); // Ensure correct path
 const userRoutes = require("./routes/userRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 dotenv.config();
 
@@ -15,11 +16,11 @@ mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-.then(() => console.log("✅ MongoDB Connected Successfully"))
-.catch((err) => {
-    console.error("❌ MongoDB Connection Error:", err);
-    process.exit(1);
-});
+    .then(() => console.log("✅ MongoDB Connected Successfully"))
+    .catch((err) => {
+        console.error("❌ MongoDB Connection Error:", err);
+        process.exit(1);
+    });
 
 // ✅ Initialize Express App
 const app = express();
@@ -32,9 +33,9 @@ app.use(morgan("dev"));
 
 // ✅ Rate Limiting
 const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100,
-  message: "Too many requests, please try again later.",
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    max: 100,
+    message: "Too many requests, please try again later.",
 });
 app.use(limiter);
 
@@ -42,8 +43,8 @@ app.use(limiter);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/salon", require("./routes/salonRoutes"));  // Salon API Added
-// app.use("/api/booking", require("./routes/bookingRoutes"));
-// app.use("/api/payment", require("./routes/paymentRoutes"));
+app.use("/api/booking", require("./routes/bookingRoutes"));
+app.use("/api/payment", paymentRoutes);
 // app.use("/api/wallet", require("./routes/walletRoutes"));
 
 // ✅ Default Route

@@ -172,3 +172,36 @@ exports.getAllUserPayInReport = async (req, res) => {
         res.status(500).json({ success: false, message: "Error fetching user pay-in report", error: error.message });
     }
 };
+
+exports.addReview = async (req, res) => {
+    try {
+      const { salonId, rating, comment } = req.body;  // Expecting salonId, rating, and comment in the request body
+      const userId = req.user._id;  // Assuming `req.user` contains the logged-in user's info
+  
+      // Find the salon by its ID
+      const salon = await Salon.findById(salonId);
+      if (!salon) {
+        return res.status(404).json({ message: "Salon not found." });
+      }
+  
+      // Create a new review
+      const newReview = {
+        userId,
+        rating,
+        comment
+      };
+  
+      // Add the review to the salon's reviews array
+      salon.reviews.push(newReview);
+  
+      // Recalculate the average rating of the salon
+      salon.calculateAverageRating();
+      
+      // Save the salon with the new review and updated rating
+      await salon.save();
+  
+      res.status(201).json({ message: "Review added successfully.", salon });
+    } catch (error) {
+      res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+  };

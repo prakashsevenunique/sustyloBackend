@@ -11,8 +11,8 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
-  name: { type: String, required: true }, // Name field
-  email: { type: String, required: true, unique: true }, // Email field
+  name: { type: String }, // Optional during registration
+  email: { type: String, unique: true, sparse: true, default: undefined }, // ✅ Fix for duplicate null issue
   address: String,  // Optional field for address
 });
 

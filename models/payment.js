@@ -1,19 +1,17 @@
 const mongoose = require("mongoose");
 
-// ✅ Check if the model already exists before defining it
-if (!mongoose.models.Payment) {
-  const paymentSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    salonOwner: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true },
+const PayInSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     amount: { type: Number, required: true },
-    type: { type: String, enum: ["payin", "payout"], required: true },
-    status: { type: String, enum: ["pending", "completed", "failed"], default: "pending" },
-    transactionId: { type: String, unique: true, required: true },
-    createdAt: { type: Date, default: Date.now },
-  });
+    reference: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    mobile: { type: String, required: true },
+    email: { type: String, required: true },
+    status: { type: String, enum: ["Pending", "Approved", "Failed"], default: "Pending" },
+    utr: { type: String, default: null },
+  },
+  { timestamps: true }
+);
 
-  mongoose.model("Payment", paymentSchema);
-}
-
-// ✅ Export the existing model
-module.exports = mongoose.model("Payment");
+module.exports = mongoose.model("PayIn", PayInSchema);
