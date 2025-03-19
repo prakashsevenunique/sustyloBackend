@@ -1,66 +1,99 @@
 const Salon = require("../models/salon");
 const User = require("../models/User");
-const haversine = require('haversine');
 
-// ✅ Register Salon (Owner fills basic details)
+// ✅ Register Salon (With File Uploads)
 exports.registerSalon = async (req, res) => {
     try {
-        const { ownerName, salonName, mobile, email, salonAddress, latitude, longitude, services, category } = req.body;
+        console.log("🚀 Incoming Request for Salon Registration");
+        console.log("Request Body:", req.body);
 
-        // Check if salon with the same mobile already exists
+        const { ownerName, salonName, mobile, email, locationMapUrl, salonAddress } = req.body;
+
+        // ✅ Ensure all required fields are provided
+        if (!ownerName || !salonName || !mobile || !email || !locationMapUrl || !salonAddress) {
+            return res.status(400).json({ message: "All fields are required!" });
+        }
+
+        // ✅ Check if the salon already exists by mobile number
         const existingSalon = await Salon.findOne({ mobile });
         if (existingSalon) {
             return res.status(400).json({ message: "Salon with this mobile number already exists." });
         }
 
-        // Ensure latitude & longitude are valid
-        if (!latitude || !longitude) {
-            return res.status(400).json({ message: "Latitude and Longitude are required." });
-        }
-
-        // Create new salon with correct location format
+        // ✅ Create new salon (without photos & agreement)
         const newSalon = new Salon({
             ownerName,
             salonName,
             mobile,
             email,
-            salonAddress,
-            location: {
-                type: "Point",
-                coordinates: [parseFloat(longitude), parseFloat(latitude)] // Correct format [longitude, latitude]
-            },
-            status: "pending", // Default status is "pending"
-            services: services || [], // Default empty array if no services provided
-            category: category || "", // Optional category
+            locationMapUrl,
+            salonAddress
         });
 
         await newSalon.save();
 
         res.status(201).json({
-            message: "Salon registered successfully. Awaiting admin approval.",
+            message: "Salon registered successfully! You can now upload photos via the update API.",
             salon: newSalon
         });
     } catch (error) {
+        console.error("❌ Error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
-};
+};  
 
-
-// ✅ Admin Updates Salon (Approval Process)
+// ✅ Update Salon (Admin Approval & Edits)
 exports.updateSalon = async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
 
-        const updatedSalon = await Salon.findByIdAndUpdate(id, updateData, { new: true });
+        console.log("🛠️ Updating Salon:", id);
+        console.log("Request Body:", updateData);
+        console.log("Uploaded Files:", req.files); // ✅ Debugging File Upload
 
-        if (!updatedSalon) return res.status(404).json({ message: "Salon not found." });
+        // ✅ Find existing salon
+        const salon = await Salon.findById(id);
+        if (!salon) {
+            return res.status(404).json({ message: "Salon not found." });
+        }
 
-        res.status(200).json({ message: "Salon details updated successfully.", salon: updatedSalon });
+        // ✅ Handle New Photos (Minimum 3 Required)
+        let newSalonPhotos = salon.salonPhotos;
+        if (req.files["salonPhotos"]) {
+            const uploadedPhotos = req.files["salonPhotos"].map(file => file.path);
+
+            if (uploadedPhotos.length < 3) {
+                return res.status(400).json({ message: "At least 3 salon photos are required." });
+            }
+
+            newSalonPhotos = uploadedPhotos;
+        }
+
+        // ✅ Handle New Agreement File (Optional)
+        let newSalonAgreement = salon.salonAgreement;
+        if (req.files["salonAgreement"]) {
+            newSalonAgreement = req.files["salonAgreement"][0].path;
+        }
+
+        // ✅ Update salon details
+        Object.assign(salon, updateData);
+        salon.salonPhotos = newSalonPhotos;
+        salon.salonAgreement = newSalonAgreement;
+
+        await salon.save();
+
+        res.status(200).json({
+            message: "Salon updated successfully!",
+            salon
+        });
     } catch (error) {
+        console.error("❌ Internal Server Error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+
+
 
 // ✅ Get Salon by ID
 exports.getSalonById = async (req, res) => {
@@ -110,12 +143,10 @@ exports.getNearbySalons = async (req, res) => {
 
         const query = {};
 
-        // Filter by gender if provided
         if (gender) {
             query["services.gender"] = gender;
         }
 
-        // Filter by category if provided
         if (category) {
             query["services.name"] = { $regex: category, $options: "i" };
         }
@@ -129,7 +160,7 @@ exports.getNearbySalons = async (req, res) => {
                 }
             },
             {
-                $match: query // Apply gender and category filters
+                $match: query
             },
             {
                 $lookup: {
@@ -145,7 +176,7 @@ exports.getNearbySalons = async (req, res) => {
                 }
             },
             {
-                $sort: { distance: 1, averageRating: -1 } // Nearest first, then highest rating
+                $sort: { distance: 1, averageRating: -1 }
             }
         ]);
 
@@ -160,38 +191,29 @@ exports.getNearbySalons = async (req, res) => {
     }
 };
 
-
+// ✅ Add Review to Salon
 exports.addReview = async (req, res) => {
     try {
-        const { salonId } = req.params;  // Salon ID from the URL params
-        const { rating, comment, phone } = req.body;  // Rating, comment, and phone number from the request body
+        const { salonId } = req.params;
+        const { rating, comment, phone } = req.body;
 
-        // Find the user by phone number (assuming phone is passed in the request body)
         const user = await User.findOne({ phone });
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
 
-        // Find the salon by ID
         const salon = await Salon.findById(salonId);
         if (!salon) {
             return res.status(404).json({ message: "Salon not found." });
         }
 
-        // Create a new review object
         const newReview = {
-            userId: user._id, // Save the userId
+            userId: user._id,
             rating,
             comment,
         };
 
-        // Add the new review to the salon's reviews array
         salon.reviews.push(newReview);
-
-        // Recalculate the average rating after adding the review
-        salon.calculateAverageRating();
-
-        // Save the salon document with the updated reviews and average rating
         await salon.save();
 
         res.status(201).json({ message: "Review added successfully.", salon });
