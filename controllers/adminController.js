@@ -2,9 +2,9 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const Admin = require("../models/admin");
 const User = require("../models/User");
-// const Salon = require("../models/salon");
 const Wallet = require("../models/Wallet");
 const Payment = require("../models/payment");
+const Salon = require("../models/salon");
 
 // ✅ Register Admin & Generate Token
 exports.registerAdmin = async (req, res) => {
@@ -90,18 +90,40 @@ exports.getAllShopOwners = async (req, res) => {
 };
 
 // ✅ Update Shop Owner Details
-exports.updateShopOwner = async (req, res) => {
+exports.updateSalon = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phone, status } = req.body;
+        const updateData = req.body;
 
-        const owner = await User.findByIdAndUpdate(id, { name, email, phone, status }, { new: true });
+        console.log("🛠️ Updating Salon:", id);
+        console.log("Request Body:", updateData);
 
-        if (!owner) return res.status(404).json({ success: false, message: "Shop Owner not found" });
+        // ✅ Check if the mobile number is changing
+        if (updateData.mobile) {
+            const existingSalon = await Salon.findOne({ mobile: updateData.mobile });
+            
+            // ✅ If a salon exists with this mobile but it's not the same salon we're updating, return an error
+            if (existingSalon && existingSalon._id.toString() !== id) {
+                return res.status(400).json({ 
+                    message: "This mobile number is already in use by another salon."
+                });
+            }
+        }
 
-        res.json({ success: true, message: "Shop Owner updated successfully!", owner });
+        // ✅ Update Salon
+        const updatedSalon = await Salon.findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!updatedSalon) {
+            return res.status(404).json({ message: "Salon not found." });
+        }
+
+        res.status(200).json({
+            message: "Salon updated successfully!",
+            salon: updatedSalon
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Error updating shop owner", error: error.message });
+        console.error("❌ Internal Server Error:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
 
@@ -115,21 +137,7 @@ exports.getPendingSalonRequests = async (req, res) => {
     }
 };
 
-// ✅ Update Salon Status
-exports.updateSalonStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
 
-        const salon = await Salon.findByIdAndUpdate(id, { status }, { new: true });
-
-        if (!salon) return res.status(404).json({ success: false, message: "Salon not found" });
-
-        res.json({ success: true, message: `Salon ${status} successfully!`, salon });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Error updating salon status", error: error.message });
-    }
-};
 
 // ✅ Fetch All Wallets
 exports.getAllShopWallets = async (req, res) => {

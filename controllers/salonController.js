@@ -1,16 +1,16 @@
-const Salon = require("../models/Salon");
+const Salon = require("../models/salon");
 const User = require("../models/User");
 
-// ✅ Register Salon (With File Uploads)
-exports.registerSalon = async (req, res) => {
+// ✅ Register Salon and lead (With File Uploads)
+exports.SalonLead = async (req, res) => {
     try {
         console.log("🚀 Incoming Request for Salon Registration");
         console.log("Request Body:", req.body);
 
-        const { ownerName, salonName, mobile, email, locationMapUrl, salonAddress } = req.body;
+        const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
         // ✅ Ensure all required fields are provided
-        if (!ownerName || !salonName || !mobile || !email || !locationMapUrl || !salonAddress) {
+        if (!ownerName || !salonName || !mobile || !email || !salonAddress) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
@@ -26,7 +26,6 @@ exports.registerSalon = async (req, res) => {
             salonName,
             mobile,
             email,
-            locationMapUrl,
             salonAddress
         });
 
@@ -42,57 +41,6 @@ exports.registerSalon = async (req, res) => {
     }
 };  
 
-// ✅ Update Salon (Admin Approval & Edits)
-exports.updateSalon = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updateData = req.body;
-
-        console.log("🛠️ Updating Salon:", id);
-        console.log("Request Body:", updateData);
-        console.log("Uploaded Files:", req.files); // ✅ Debugging File Upload
-
-        // ✅ Find existing salon
-        const salon = await Salon.findById(id);
-        if (!salon) {
-            return res.status(404).json({ message: "Salon not found." });
-        }
-
-        // ✅ Handle New Photos (Minimum 3 Required)
-        let newSalonPhotos = salon.salonPhotos;
-        if (req.files["salonPhotos"]) {
-            const uploadedPhotos = req.files["salonPhotos"].map(file => file.path);
-
-            if (uploadedPhotos.length < 3) {
-                return res.status(400).json({ message: "At least 3 salon photos are required." });
-            }
-
-            newSalonPhotos = uploadedPhotos;
-        }
-
-        // ✅ Handle New Agreement File (Optional)
-        let newSalonAgreement = salon.salonAgreement;
-        if (req.files["salonAgreement"]) {
-            newSalonAgreement = req.files["salonAgreement"][0].path;
-        }
-
-        // ✅ Update salon details
-        Object.assign(salon, updateData);
-        salon.salonPhotos = newSalonPhotos;
-        salon.salonAgreement = newSalonAgreement;
-
-        await salon.save();
-
-        res.status(200).json({
-            message: "Salon updated successfully!",
-            salon
-        });
-    } catch (error) {
-        console.error("❌ Internal Server Error:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
-};
-
 // ✅ Get Salon by ID
 exports.getSalonById = async (req, res) => {
     try {
@@ -106,7 +54,20 @@ exports.getSalonById = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+exports.updateShopOwner = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, phone, status } = req.body;
 
+        const owner = await User.findByIdAndUpdate(id, { name, email, phone, status }, { new: true });
+
+        if (!owner) return res.status(404).json({ success: false, message: "Shop Owner not found" });
+
+        res.json({ success: true, message: "Shop Owner updated successfully!", owner });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error updating shop owner", error: error.message });
+    }
+};
 // ✅ Get All Salons (With Status Filter)
 exports.getAllSalons = async (req, res) => {
     try {
@@ -151,15 +112,49 @@ exports.getNearbySalons = async (req, res) => {
 
         const salons = await Salon.aggregate([
             {
-                $geoNear: {
-                    near: { type: "Point", coordinates: userLocation },
-                    distanceField: "distance",
-                    spherical: true
+                $match: {
+                    latitude: { $exists: true, $ne: null },
+                    longitude: { $exists: true, $ne: null },
+                    services: {
+                        $elemMatch: {
+                            gender: gender,
+                            title: { $regex: category, $options: "i" }
+                        }
+                    }
                 }
             },
             {
-                $match: query
+                $addFields: {
+                    distance: {
+                        $multiply: [
+                            6371, // Earth radius in KM
+                            {
+                                $acos: {
+                                    $add: [
+                                        {
+                                            $multiply: [
+                                                { $sin: { $degreesToRadians: parseFloat(latitude) } },
+                                                { $sin: { $degreesToRadians: "$latitude" } }
+                                            ]
+                                        },
+                                        {
+                                            $multiply: [
+                                                { $cos: { $degreesToRadians: parseFloat(latitude) } },
+                                                { $cos: { $degreesToRadians: "$latitude" } },
+                                                { $cos: { $subtract: [
+                                                    { $degreesToRadians: "$longitude" },
+                                                    { $degreesToRadians: parseFloat(longitude) }
+                                                ] } }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
             },
+            { $sort: { distance: 1 } }, // ✅ Nearest salon first
             {
                 $lookup: {
                     from: "reviews",
@@ -174,10 +169,9 @@ exports.getNearbySalons = async (req, res) => {
                 }
             },
             {
-                $sort: { distance: 1, averageRating: -1 }
+                $sort: { distance: 1, averageRating: -1 } // ✅ Sort by distance, then rating
             }
         ]);
-
         if (salons.length === 0) {
             return res.status(404).json({ message: "No salons found." });
         }

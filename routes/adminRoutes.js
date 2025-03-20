@@ -8,11 +8,12 @@ const {
     updateShopOwner,
     getAllShopWallets,
     getPendingSalonRequests,
-    updateSalonStatus,
     getShopOwnerPayInReport,
     getShopOwnerPayoutReport,
-    getAllUserPayInReport
+    getAllUserPayInReport,
+    updateSalon
 } = require("../controllers/adminController");
+
 
 const router = express.Router();
 
@@ -23,11 +24,10 @@ router.post("/register", registerAdmin); // ✅ Only Super Admin can register ne
 // ✅ User Management Routes
 router.get("/users", protect, authorizeRoles("super_admin", "admin"), getAllUsers);
 router.get("/shop-owners", protect, authorizeRoles("super_admin", "admin"), getAllShopOwners);
-router.put("/shop-owner/:id/status", protect, authorizeRoles("super_admin", "admin"), updateShopOwner);
 
 // ✅ Salon Management Routes
 router.get("/shop-requests", protect, authorizeRoles("super_admin", "admin"), getPendingSalonRequests);
-router.put("/shop-request/:id/status", protect, authorizeRoles("super_admin", "admin"), updateSalonStatus);
+router.put("/update-salon/:id",protect, authorizeRoles("super_admin", "admin"),updateSalon);
 
 // ✅ Wallet & Reports Routes
 router.get("/shop-wallets", protect, authorizeRoles("super_admin", "admin"), getAllShopWallets);

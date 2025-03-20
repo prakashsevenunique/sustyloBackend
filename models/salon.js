@@ -16,7 +16,7 @@ const SalonSchema = new mongoose.Schema(
     mobile: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     salonAddress: { type: String, required: true },
-    locationMapUrl: { type: String, required: true },
+    locationMapUrl: { type: String, },
 
     // ✅ New Fields
     salonTitle: { type: String, default: "" },
@@ -55,6 +55,8 @@ const SalonSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+
 
 // ✅ Ensure the model is only defined once
 module.exports = mongoose.models.Salon || mongoose.model("Salon", SalonSchema);

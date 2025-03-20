@@ -8,6 +8,17 @@ const {
     cancelBooking, 
     completeBooking 
 } = require('../controllers/bookingController');
+const { getNearbySalons, SalonLead, getSalonById } = require('../controllers/salonController');
+
+
+// lead for sallon
+router.post("/lead/salon",SalonLead)
+
+// nearby sallon
+router.get('/nearby', getNearbySalons);
+
+//  single view salon as completed
+router.get('/view/:id', getSalonById);
 
 // Route to create a booking (User Books Appointment)
 router.post('/create', createBooking);
@@ -26,5 +37,6 @@ router.post('/cancel/:bookingId', cancelBooking);
 
 // Mark a booking as completed
 router.post('/complete/:bookingId', completeBooking);
+
 
 module.exports = router;
