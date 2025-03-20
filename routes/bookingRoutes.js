@@ -1,22 +1,30 @@
 const express = require('express');
+const router = express.Router();
 const { 
     createBooking, 
-    handleBookingRequest, 
-    getPendingBookings, 
-    cancelBooking, 
     getUserBookings, 
     getSalonBookings, 
+    confirmBooking, 
+    cancelBooking, 
     completeBooking 
 } = require('../controllers/bookingController');
 
-const router = express.Router();
+// Route to create a booking (User Books Appointment)
+router.post('/create', createBooking);
 
-router.post('/create', createBooking); // User books appointment (Pending)
-router.post('/handle/:id', handleBookingRequest); // Salon Owner confirms/cancels
-router.get('/pending/:salonId', getPendingBookings); // Get pending requests for a salon
-router.post('/cancel/:id', cancelBooking); // User cancels booking
-router.get('/user/:userId', getUserBookings); // Get user bookings
-router.get('/salon/:salonId', getSalonBookings); // Get salon bookings
-router.post('/complete/:id', completeBooking); // Mark booking as completed
+// Get all bookings for a user
+router.get('/user/:userId', getUserBookings);
+
+// Get all bookings for a salon
+router.get('/salon/:salonId', getSalonBookings);
+
+// Confirm a booking after payment
+router.post('/confirm/:bookingId', confirmBooking);
+
+// Cancel a booking
+router.post('/cancel/:bookingId', cancelBooking);
+
+// Mark a booking as completed
+router.post('/complete/:bookingId', completeBooking);
 
 module.exports = router;

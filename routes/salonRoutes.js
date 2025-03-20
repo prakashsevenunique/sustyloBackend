@@ -1,38 +1,30 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { upload, convertToJpg } = require("../authMiddleware/upload"); 
 const { 
-    registerSalon, 
-    updateSalon, 
-    getSalonById, 
-    getAllSalons, 
-    getNearbySalons, 
-    addReview 
-} = require("../controllers/salonController");
+    createBooking, 
+    getUserBookings, 
+    getSalonBookings, 
+    confirmBooking, 
+    cancelBooking, 
+    completeBooking 
+} = require('../controllers/bookingController');
 
-// ✅ Register Salon (NO PHOTOS, Only Basic Details)
-router.post("/register", registerSalon);
+// Route to create a booking (User Books Appointment)
+router.post('/create', createBooking);
 
-// ✅ Update Salon (With Photos & Agreement Upload)
-router.put(
-    "/update/:id",
-    upload.fields([
-        { name: "salonPhotos", maxCount: 5 },  // ✅ Max 5 photos
-        { name: "salonAgreement", maxCount: 1 } // ✅ Only 1 agreement file
-    ]),
-    updateSalon
-);
+// Get all bookings for a user
+router.get('/user/:userId', getUserBookings);
 
-// ✅ Get Nearby Salons
-router.get("/nearby", getNearbySalons);
+// Get all bookings for a salon
+router.get('/salon/:salonId', getSalonBookings);
 
-// ✅ Get All Salons
-router.get("/", getAllSalons);
+// Confirm a booking after payment
+router.post('/confirm/:bookingId', confirmBooking);
 
-// ✅ Get Salon by ID
-router.get("/:id", getSalonById);
+// Cancel a booking
+router.post('/cancel/:bookingId', cancelBooking);
 
-// ✅ Add Review
-router.post("/salon/:salonId/review", addReview);
+// Mark a booking as completed
+router.post('/complete/:bookingId', completeBooking);
 
 module.exports = router;

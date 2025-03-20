@@ -56,4 +56,5 @@ const SalonSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Salon", SalonSchema);
+// ✅ Ensure the model is only defined once
+module.exports = mongoose.models.Salon || mongoose.model("Salon", SalonSchema);

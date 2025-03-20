@@ -6,6 +6,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const errorHandler = require("./authMiddleware/errorMiddleware"); // Ensure correct path
+const authenticateUser = require("./authMiddleware/authMiddleware"); // Example authentication middleware
 const userRoutes = require("./routes/userRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 
@@ -43,9 +44,8 @@ app.use(limiter);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/salon", require("./routes/salonRoutes"));  // Salon API Added
-app.use("/api/booking", require("./routes/bookingRoutes"));
+app.use("/api/booking", require("./routes/bookingRoutes")); // Protected route
 app.use("/api/payment", paymentRoutes);
-// app.use("/api/wallet", require("./routes/walletRoutes"));
 
 // ✅ Default Route
 app.get("/", (req, res) => {

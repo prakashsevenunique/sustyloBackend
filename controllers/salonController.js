@@ -1,4 +1,4 @@
-const Salon = require("../models/salon");
+const Salon = require("../models/Salon");
 const User = require("../models/User");
 
 // ✅ Register Salon (With File Uploads)
@@ -92,8 +92,6 @@ exports.updateSalon = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
-
-
 
 // ✅ Get Salon by ID
 exports.getSalonById = async (req, res) => {
