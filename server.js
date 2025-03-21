@@ -9,6 +9,7 @@ const errorHandler = require("./authMiddleware/errorMiddleware"); // Ensure corr
 const authenticateUser = require("./authMiddleware/authMiddleware"); // Example authentication middleware
 const userRoutes = require("./routes/userRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const scheduleRoutes = require("./routes/scheduleRoutes");
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/salon", require("./routes/salonRoutes"));  // Salon API Added
 app.use("/api/booking", require("./routes/bookingRoutes")); // Protected route
 app.use("/api/payment", paymentRoutes);
+app.use("/api/schedule", scheduleRoutes);
 
 // ✅ Default Route
 app.get("/", (req, res) => {

@@ -2,36 +2,31 @@ const Booking = require('../models/Booking');
 const Salon = require('../models/salon');
 const User = require('../models/User'); // Assuming you have a User model
 
-// Create Booking
 exports.createBooking = async (req, res) => {
     try {
-        const { userId, salonId, service, date, time, chairNumber } = req.body;
-
-        const salon = await Salon.findById(salonId);
-        if (!salon) return res.status(404).json({ error: 'Salon not found' });
-
-        const newBooking = new Booking({
-            user: userId,
-            salon: salonId,
-            service,
-            date,
-            time,
-            chairNumber,
-            status: 'pending',
-            paymentStatus: 'pending'
-        });
-
-        await newBooking.save();
-
-        res.status(200).json({
-            message: 'Booking created successfully!',
-            bookingId: newBooking._id,
-            bookingDetails: newBooking
-        });
+      const { salonId, userId, date, timeSlot, seatNumber, serviceDuration } = req.body;
+  
+      if (!salonId || !userId || !date || !timeSlot || !seatNumber || !serviceDuration) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+  
+      // ✅ Check if seat is already booked
+      const existingBooking = await Booking.findOne({ salonId, date, timeSlot, seatNumber, status: "Confirmed" });
+  
+      if (existingBooking) {
+        return res.status(400).json({ error: "This seat is already booked for the selected time slot" });
+      }
+  
+      // ✅ Create Booking
+      const booking = new Booking({ salonId, userId, date, timeSlot, seatNumber, serviceDuration });
+      await booking.save();
+  
+      res.status(201).json({ message: "Booking successful", booking });
     } catch (error) {
-        res.status(500).json({ error: 'Internal server error', details: error.message });
+      console.error("Error in createBooking:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-};
+  };
 
 // Get all bookings for a user
 exports.getUserBookings = async (req, res) => {
