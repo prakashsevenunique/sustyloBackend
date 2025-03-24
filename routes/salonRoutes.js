@@ -15,7 +15,7 @@ const { getNearbySalons, SalonLead, getSalonById } = require('../controllers/sal
 router.post("/lead/salon",SalonLead)
 
 // nearby sallon
-router.get('/nearby ', getNearbySalons);
+router.get('/nearby', getNearbySalons);
 
 //  single view salon as completed
 router.get('/view/:id', getSalonById);
