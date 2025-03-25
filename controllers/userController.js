@@ -16,7 +16,7 @@ exports.sendOTP = async (req, res) => {
       role: "user",
       otp,
       otpExpiry: new Date(Date.now() + 5 * 60000), // OTP expires in 5 minutes
-      email: undefined, // ✅ Fix: Ensures MongoDB doesn't store null
+     
     });
   } else {
     user.otp = otp;
