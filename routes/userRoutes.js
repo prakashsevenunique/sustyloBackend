@@ -17,5 +17,4 @@ router.post("/update-location", updateLocation);
 router.put("/update-profile/:id", updateUserProfile);
 router.get("/get-all", getAllUsers);
 router.get("/get/:id", getUserById);
-
 module.exports = router;

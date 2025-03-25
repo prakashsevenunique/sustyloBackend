@@ -20,7 +20,7 @@ exports.sendOTP = async (req, res) => {
     });
   } else {
     user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 5 * 60000);
+    user.otpExpiry = new Date(Date.now() + 5 * 60000);``
   }
 
   await user.save();
