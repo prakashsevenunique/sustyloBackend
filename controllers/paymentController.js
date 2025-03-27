@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 const PayIn = require("../models/payment");
 const mongoose = require("mongoose");
-
+  
 const payIn = async (req, res) => {
   const { amount, reference, name, mobile, email, userId } = req.body;
 

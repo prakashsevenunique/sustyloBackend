@@ -1,88 +1,107 @@
-// userController.js
 const User = require("../models/User");
-const { generateOTP, sendOTP } = require("../utils/otpService");
+const {generateOtp, verifyOtp , sendOtp } = require("../utils/otpService");
+const bcrypt = require("bcryptjs");
 
-// sendOTP method
-exports.sendOTP = async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone number required" });
-
-  const otp = generateOTP();
-  let user = await User.findOne({ phone });
-
-  if (!user) {
-    user = new User({
-      phone,
-      role: "user",
-      otp,
-      otpExpiry: new Date(Date.now() + 5 * 60000), // OTP expires in 5 minutes
-     
-    });
-  } else {
-    user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 5 * 60000);``
-  }
-
-  await user.save();
-
+// ✅ Send OTP
+// Send OTP to the user
+exports.sendOtpController = async (req, res) => {
   try {
-    const otpResponse = await sendOTP(phone, otp);
-    if (!otpResponse.success) {
-      return res.status(500).json({ error: "Failed to send OTP. Try again later." });
+    const { mobileNumber } = req.body;
+
+    if (!mobileNumber) {
+      return res.status(400).json({ message: "Mobile number is required" });
     }
-    res.json({ success: true, message: "OTP sent successfully", phone });
+
+    // Generate OTP
+    const otp = await generateOtp(mobileNumber);
+
+    // Send OTP via SMS
+    const smsResult = await sendOtp(mobileNumber, otp);
+    //console.log("otp", smsResult);
+
+    if (smsResult.success) {
+      return res.status(200).json({ message: "OTP sent successfully" });
+    } else {
+      return res.status(400).json({ message: smsResult.message });
+    }
   } catch (error) {
-    return res.status(500).json({ error: "OTP service temporarily unavailable" });
+    console.error("Error in sendOtpController:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-exports.verifyOTP = async (req, res) => {
-  const { phone, otp } = req.body;
-  if (!phone || !otp) return res.status(400).json({ error: "Phone and OTP required" });
+// Verify OTP controller
+exports.verifyOTPController = async (req, res) => {
+  try {
+    const { mobileNumber, otp } = req.body;
 
-  const user = await User.findOne({ phone });
-  if (!user) return res.status(404).json({ error: "User not found" });
+    if (!mobileNumber || !otp) {
+      return res.status(400).json({ message: "Mobile number and OTP are required" });
+    }
 
-  if (user.otp !== otp || new Date() > user.otpExpiry) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
+    // ✅ Verify OTP
+    const verificationResult = await verifyOtp(mobileNumber, otp);
+
+    if (!verificationResult.success) {
+      return res.status(400).json({ message: verificationResult.message });
+    }
+
+    // ✅ Check if user already exists
+    let user = await User.findOne({ phone: mobileNumber });
+
+    if (!user) {
+      // ✅ Create a new user if not found
+      user = new User({
+        phone: mobileNumber,
+        role: "user", // Default role
+      });
+      await user.save();
+    }
+
+    return res.status(200).json({
+      message: "OTP verified successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Error in verifyOTPController:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
-
-  user.otp = null;
-  user.otpExpiry = null;
-  await user.save();
-
-  res.json({ success: true, message: "Login successful", user });
 };
 
 // ✅ Update User Location (Every login)
 exports.updateLocation = async (req, res) => {
-  const { phone, latitude, longitude } = req.body;
+  try {
+    const { phone, latitude, longitude } = req.body;
 
-  if (!phone || !latitude || !longitude) {
-    return res.status(400).json({ error: "Phone number and location required" });
+    if (!phone || !latitude || !longitude) {
+      return res.status(400).json({ error: "Phone number and location required" });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { phone },
+      { location: { latitude, longitude } },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ message: "Location updated successfully", location: user.location });
+  } catch (error) {
+    console.error("Update Location Error:", error);
+    res.status(500).json({ error: "Server error" });
   }
-
-  const user = await User.findOneAndUpdate(
-    { phone },
-    { location: { latitude, longitude } },
-    { new: true }
-  );
-
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  res.json({ message: "Location updated successfully", location: user.location });
 };
 
-// ✅ Update user profile
+// ✅ Update User Profile
 exports.updateUserProfile = async (req, res) => {
-  const { id } = req.params;
-  const { name, email, gender } = req.body;
-
-  if (!name || !email) return res.status(400).json({ error: "Name and email required" });
-
   try {
+    const { id } = req.params;
+    const { name, email, gender } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and email required" });
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
       { name, email, gender },
@@ -93,6 +112,7 @@ exports.updateUserProfile = async (req, res) => {
 
     res.json({ message: "Profile updated successfully", user });
   } catch (error) {
+    console.error("Update Profile Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -103,22 +123,22 @@ exports.getAllUsers = async (req, res) => {
     const users = await User.find().populate("wallet");
     res.json(users);
   } catch (error) {
+    console.error("Get All Users Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// ✅ Get user by ID
+// ✅ Get User by ID
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).populate("wallet");
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     res.json(user);
   } catch (error) {
+    console.error("Get User by ID Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
