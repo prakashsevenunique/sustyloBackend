@@ -8,20 +8,20 @@ const morgan = require("morgan");
 const errorHandler = require("./authMiddleware/errorMiddleware"); // Ensure correct path
 const authenticateUser = require("./authMiddleware/authMiddleware"); // Example authentication middleware
 const userRoutes = require("./routes/userRoutes");
+const adminRoutes = require("./routes/adminRoutes"); // ✅ Explicit Import
+const salonRoutes = require("./routes/salonRoutes"); // ✅ Explicit Import
+const bookingRoutes = require("./routes/bookingRoutes"); // ✅ Explicit Import
 const paymentRoutes = require("./routes/paymentRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 
 dotenv.config();
 
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+// ✅ Connect to MongoDB (Remove Deprecated Options)
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected Successfully"))
     .catch((err) => {
         console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1);
+        process.exit(1); // Exit process on failure
     });
 
 // ✅ Initialize Express App
@@ -33,19 +33,14 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
-// ✅ Rate Limiting
-const limiter = rateLimit({
-    windowMs: 10 * 60 * 1000, // 10 minutes
-    max: 100,
-    message: "Too many requests, please try again later.",
-});
-app.use(limiter);
+
+
 
 // ✅ Routes
 app.use("/api/user", userRoutes);
-app.use("/api/admin", require("./routes/adminRoutes"));
-app.use("/api/salon", require("./routes/salonRoutes"));  // Salon API Added
-app.use("/api/booking", require("./routes/bookingRoutes")); // Protected route
+app.use("/api/admin", adminRoutes);
+app.use("/api/salon", salonRoutes);
+app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/schedule", scheduleRoutes);
 
@@ -58,5 +53,5 @@ app.get("/", (req, res) => {
 app.use(errorHandler);
 
 // ✅ Start Server
-const PORT = process.env.PORT ||5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
