@@ -14,8 +14,8 @@ const bookingRoutes = require("./routes/bookingRoutes"); // ✅ Explicit Import
 // const paymentRoutes = require("./routes/paymentRoutes");
 // const scheduleRoutes = require("./routes/scheduleRoutes");
 const referralService = require("./services/referralService");
-const payinRoutes = require("./routes/payinRoutes"); // ✅ Correct Import
-const payoutRoutes = require("./routes/payoutRoutes");
+// const payinRoutes = require("./routes/payinRoutes"); // ✅ Correct Import
+const paymentRoutes = require("./routes/paymentRoutes");
 
 dotenv.config();
 
@@ -44,8 +44,8 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/salon", salonRoutes);
 app.use("/api/booking", bookingRoutes);
-app.use("/api/payin", payinRoutes);
-app.use("/api/payout", payoutRoutes);
+// app.use("/api/payin", payinRoutes);
+app.use("/api/payment", paymentRoutes);
 // app.use("/api/payout", referralService);
 
 // ✅ Default Route
