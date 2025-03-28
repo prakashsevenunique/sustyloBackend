@@ -13,6 +13,7 @@ const salonRoutes = require("./routes/salonRoutes"); // ✅ Explicit Import
 const bookingRoutes = require("./routes/bookingRoutes"); // ✅ Explicit Import
 const paymentRoutes = require("./routes/paymentRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
+const referralService = require("./services/referralService");
 
 dotenv.config();
 

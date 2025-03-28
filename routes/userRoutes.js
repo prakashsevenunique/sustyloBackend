@@ -1,13 +1,15 @@
 const express = require("express");
 const {
-  
   updateLocation,
   updateUserProfile,
   getAllUsers,
   getUserById,
   sendOtpController,
   verifyOTPController,
-} = require("../controllers/userController");
+  getReferralCode, // ✅ Add this import
+} = require("../controllers/userController"); // ✅ Ensure correct import path
+
+const referralService = require("../services/referralService");
 
 const router = express.Router();
 
@@ -17,5 +19,6 @@ router.post("/update-location", updateLocation);
 router.put("/update-profile/:id", updateUserProfile);
 router.get("/get-all", getAllUsers);
 router.get("/get/:id", getUserById);
+router.get("/referral/:userId", getReferralCode); // ✅ Now it will work
 
 module.exports = router;
