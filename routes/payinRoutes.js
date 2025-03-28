@@ -1,5 +1,5 @@
 const express = require("express");
-const { payIn, callbackPayIn, getPayInRes, payInReportAllUsers } = require("../controllers/paymentController");
+const { payIn, callbackPayIn, getPayInRes, payInReportAllUsers } = require("../controllers/payinController");
 const router = express.Router();
 
 router.post("/payin", payIn);

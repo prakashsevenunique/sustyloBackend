@@ -3,7 +3,8 @@ const bcrypt = require("bcryptjs");
 const Admin = require("../models/admin");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
-const Payment = require("../models/payment");
+const Payin = require("../models/payin");  // ✅ Corrected Import
+const Payout = require("../models/payout"); // ✅ Corrected Import
 const Salon = require("../models/salon");
 
 // ✅ Register Admin & Generate Token
@@ -13,7 +14,6 @@ exports.registerAdmin = async (req, res) => {
         
         // ✅ Check if an admin already exists
         let admin = await Admin.findOne();
-
         if (admin) {
             return res.status(400).json({ message: "Admin already registered. Please log in." });
         }
@@ -26,7 +26,7 @@ exports.registerAdmin = async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: "super_admin", // First admin is Super Admin
+            role: "super_admin",
             isActive: true
         });
 
@@ -69,7 +69,7 @@ exports.loginAdmin = async (req, res) => {
     }
 };
 
-// ✅ Fetch All Users (User Management)
+// ✅ Fetch All Users
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.find({ role: "user" }).select("-password");
@@ -98,11 +98,8 @@ exports.updateSalon = async (req, res) => {
         console.log("🛠️ Updating Salon:", id);
         console.log("Request Body:", updateData);
 
-        // ✅ Check if the mobile number is changing
         if (updateData.mobile) {
             const existingSalon = await Salon.findOne({ mobile: updateData.mobile });
-            
-            // ✅ If a salon exists with this mobile but it's not the same salon we're updating, return an error
             if (existingSalon && existingSalon._id.toString() !== id) {
                 return res.status(400).json({ 
                     message: "This mobile number is already in use by another salon."
@@ -110,9 +107,7 @@ exports.updateSalon = async (req, res) => {
             }
         }
 
-        // ✅ Update Salon
         const updatedSalon = await Salon.findByIdAndUpdate(id, updateData, { new: true });
-
         if (!updatedSalon) {
             return res.status(404).json({ message: "Salon not found." });
         }
@@ -137,8 +132,6 @@ exports.getPendingSalonRequests = async (req, res) => {
     }
 };
 
-
-
 // ✅ Fetch All Wallets
 exports.getAllShopWallets = async (req, res) => {
     try {
@@ -153,7 +146,7 @@ exports.getAllShopWallets = async (req, res) => {
 exports.getShopOwnerPayInReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
-        const payments = await Payment.find({ salonOwner: ownerId, type: "payin" });
+        const payments = await Payin.find({ salonOwner: ownerId }).populate("user", "name email phone");
         res.json({ success: true, payments });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error fetching pay-in report", error: error.message });
@@ -164,7 +157,7 @@ exports.getShopOwnerPayInReport = async (req, res) => {
 exports.getShopOwnerPayoutReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
-        const payouts = await Payment.find({ salonOwner: ownerId, type: "payout" });
+        const payouts = await Payout.find({ salonOwner: ownerId }).populate("user", "name email phone");
         res.json({ success: true, payouts });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error fetching payout report", error: error.message });
@@ -174,42 +167,42 @@ exports.getShopOwnerPayoutReport = async (req, res) => {
 // ✅ Fetch Pay-in Report for All Users
 exports.getAllUserPayInReport = async (req, res) => {
     try {
-        const payments = await Payment.find({ type: "payin" }).populate("user", "name email phone");
+        const payments = await Payin.find().populate("user", "name email phone");
         res.json({ success: true, payments });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error fetching user pay-in report", error: error.message });
     }
 };
 
+// ✅ Fetch Payout Report for All Users
+exports.getAllUserPayoutReport = async (req, res) => {
+    try {
+        const payouts = await Payout.find().populate("user", "name email phone");
+        res.json({ success: true, payouts });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching user payout report", error: error.message });
+    }
+};
+
+// ✅ Add Review for Salon
 exports.addReview = async (req, res) => {
     try {
-      const { salonId, rating, comment } = req.body;  // Expecting salonId, rating, and comment in the request body
-      const userId = req.user._id;  // Assuming `req.user` contains the logged-in user's info
+      const { salonId, rating, comment } = req.body;
+      const userId = req.user._id;
   
-      // Find the salon by its ID
       const salon = await Salon.findById(salonId);
       if (!salon) {
         return res.status(404).json({ message: "Salon not found." });
       }
   
-      // Create a new review
-      const newReview = {
-        userId,
-        rating,
-        comment
-      };
-  
-      // Add the review to the salon's reviews array
+      const newReview = { userId, rating, comment };
       salon.reviews.push(newReview);
-  
-      // Recalculate the average rating of the salon
       salon.calculateAverageRating();
       
-      // Save the salon with the new review and updated rating
       await salon.save();
   
       res.status(201).json({ message: "Review added successfully.", salon });
     } catch (error) {
       res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
-  };
+};

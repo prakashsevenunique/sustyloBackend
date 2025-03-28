@@ -57,36 +57,21 @@
 
   // Confirm Booking After Payment
   exports.confirmBooking = async (req, res) => {
-      try {
-          const { bookingId } = req.params;
+    try {
+        const { bookingId } = req.params;
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ error: "Booking not found" });
 
-          const booking = await Booking.findById(bookingId);
-          if (!booking) return res.status(404).json({ error: 'Booking not found' });
+        booking.status = "Confirmed";
+        booking.paymentStatus = "Paid";
+        await booking.save();
 
-          booking.status = 'confirmed';
-          booking.paymentStatus = 'paid';
-          await booking.save();
-
-          // ✅ Referral Bonus on First Booking
-          const user = await User.findById(booking.userId);
-          if (user && user.referredBy) {
-              const referrer = await User.findById(user.referredBy);
-              if (referrer) {
-                  let referrerWallet = await Wallet.findOne({ user: referrer._id });
-                  if (!referrerWallet) {
-                      referrerWallet = new Wallet({ user: referrer._id, balance: 0 });
-                  }
-                  referrerWallet.balance += 50; // ✅ Bonus for First Booking
-                  await referrerWallet.save();
-              }
-          }
-
-          res.status(200).json({ message: "Booking confirmed successfully", booking });
-      } catch (error) {
-          console.error("Error in confirmBooking:", error);
-          res.status(500).json({ error: "Internal server error" });
-      }
-  };
+        res.status(200).json({ message: "Booking confirmed successfully", booking });
+    } catch (error) {
+        console.error("Error in confirmBooking:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
 
   // Cancel Booking
   exports.cancelBooking = async (req, res) => {
@@ -108,34 +93,34 @@
   // Mark Booking as Completed
   exports.completeBooking = async (req, res) => {
     try {
-      const { userId, bookingId } = req.body;
+        const { bookingId } = req.params;
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ error: "Booking not found" });
 
-      // ✅ Find the booking
-      const booking = await Booking.findById(bookingId);
-      if (!booking) return res.status(404).json({ message: "Booking not found" });
+        const user = await User.findById(booking.userId);
+        if (!user) return res.status(404).json({ error: "User not found" });
 
-      if (booking.status === "completed") {
-        return res.status(400).json({ message: "Booking already completed" });
-      }
-
-      // ✅ Mark booking as completed
-      booking.status = "completed";
-      await booking.save();
-
-      // ✅ Check if this is the user's first booking
-      const userBookings = await Booking.countDocuments({ user: userId, status: "completed" });
-      if (userBookings === 1) {
-        // ✅ Add referral bonus to the referrer
-        const user = await User.findById(userId);
-        if (user.referredBy) {
-          await referralService.addReferralBonus(user.referredBy, userId);
+        // Check if this is user's first completed booking
+        const completedBookings = await Booking.countDocuments({ userId: user._id, status: "Completed" });
+        if (completedBookings === 0) {
+            // Add ₹100 bonus to the referrer
+            if (user.referredBy) {
+                const referrer = await User.findById(user.referredBy);
+                if (referrer) {
+                    referrer.walletBalance += 100;
+                    await referrer.save();
+                }
+            }
         }
-      }
 
-      res.status(200).json({ message: "Booking completed successfully" });
+        // Mark booking as completed
+        booking.status = "Completed";
+        await booking.save();
+
+        res.status(200).json({ message: "Booking completed successfully, referral bonus applied if eligible" });
 
     } catch (error) {
-      console.error("Error in completeBooking:", error);
-      res.status(500).json({ message: "Internal server error" });
+        console.error("Error in completeBooking:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
-  };
+};

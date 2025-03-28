@@ -1,5 +1,5 @@
 const { default: axios } = require("axios");
-const PayIn = require("../models/payment");
+const PayIn = require("../models/payin");
 const mongoose = require("mongoose");
   
 const payIn = async (req, res) => {
