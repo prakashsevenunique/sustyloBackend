@@ -12,7 +12,7 @@ const adminRoutes = require("./routes/adminRoutes"); // ✅ Explicit Import
 const salonRoutes = require("./routes/salonRoutes"); // ✅ Explicit Import
 const bookingRoutes = require("./routes/bookingRoutes"); // ✅ Explicit Import
 // const paymentRoutes = require("./routes/paymentRoutes");
-// const scheduleRoutes = require("./routes/scheduleRoutes");
+const scheduleRoutes = require("./routes/scheduleRoutes");
 const referralService = require("./services/referralService");
 // const payinRoutes = require("./routes/payinRoutes"); // ✅ Correct Import
 const paymentRoutes = require("./routes/paymentRoutes");
@@ -47,6 +47,7 @@ app.use("/api/booking", bookingRoutes);
 // app.use("/api/payin", payinRoutes);
 app.use("/api/payment", paymentRoutes);
 // app.use("/api/payout", referralService);
+app.use("/api/schedule", scheduleRoutes);
 
 // ✅ Default Route
 app.get("/", (req, res) => {
