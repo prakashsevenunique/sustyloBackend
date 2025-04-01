@@ -20,7 +20,7 @@
             return res.status(400).json({ error: "This seat is already booked for the selected time slot" });
         }
 
-        // ✅ Create a pending booking
+        // ✅ Create a pending booking with history entry
         const booking = new Booking({
             salonId,
             userId,
@@ -29,11 +29,11 @@
             seatNumber,
             serviceDuration,
             status: "Pending", // Initially pending until payment
-            paymentStatus: "Pending"
+            paymentStatus: "Pending",
+            bookingHistory: [{ status: "Pending", changedAt: new Date() }]
         });
 
         await booking.save();
-
         res.status(201).json({ message: "Booking initiated. Please complete payment.", bookingId: booking._id });
 
     } catch (error) {
@@ -41,6 +41,7 @@
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
 
   // Get all bookings for a user
   exports.getUserBookings = async (req, res) => {
@@ -70,7 +71,7 @@
   };
 
  // ✅ Confirm Booking After Payment
-exports.confirmBooking = async (req, res) => {
+ exports.confirmBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
 
@@ -80,8 +81,11 @@ exports.confirmBooking = async (req, res) => {
         // ✅ Update status after successful payment
         booking.status = "Confirmed";
         booking.paymentStatus = "Paid";
-        await booking.save();
 
+        // ✅ Add to history
+        booking.bookingHistory.push({ status: "Confirmed", changedAt: new Date() });
+
+        await booking.save();
         res.status(200).json({ message: "Payment successful! Booking confirmed.", booking });
 
     } catch (error) {
@@ -89,6 +93,7 @@ exports.confirmBooking = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
 
 exports.cancelUnpaidBooking = async (req, res) => {
     try {
@@ -100,8 +105,11 @@ exports.cancelUnpaidBooking = async (req, res) => {
         if (booking.paymentStatus === "Pending") {
             booking.status = "Cancelled";
             booking.paymentStatus = "Failed";
-            await booking.save();
 
+            // ✅ Add to booking history
+            booking.bookingHistory.push({ status: "Cancelled", changedAt: new Date() });
+
+            await booking.save();
             res.status(200).json({ message: "Booking cancelled due to non-payment." });
         } else {
             res.status(400).json({ error: "Booking cannot be canceled. Payment is already completed." });
@@ -135,44 +143,40 @@ exports.cancelBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
 
-        // Booking ko find karo
         const booking = await Booking.findById(bookingId);
-        if (!booking) {
-            return res.status(404).json({ error: "Booking not found" });
-        }
-        console.log("Booking is:", booking);
+        if (!booking) return res.status(404).json({ error: "Booking not found" });
 
-        // Booking se userId retrieve karo
-        const userId = booking.userId;
-        console.log("User ID is:", userId);
+        const user = await User.findById(booking.userId);
+        if (!user) return res.status(404).json({ error: "User not found" });
 
-        // User ko find karo using User model
-        const user = await User.findById(userId);
-        console.log("User is:", user);
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        // Check karo ki user ki pehli completed booking hai ya nahi
+        // ✅ Check if it's user's first completed booking
         const completedBookingsCount = await Booking.countDocuments({ userId: user._id, status: "Completed" });
-        console.log("Completed bookings count:", completedBookingsCount);
 
-        // Agar pehli booking hai aur user ne kisi se referral liya hai, to referral bonus apply karo
         if (completedBookingsCount === 0 && user.referredBy) {
             const referrer = await User.findById(user.referredBy);
             if (referrer) {
-                // Assume karo ki referrer ke paas walletBalance field exist karti hai
-                referrer.walletBalance = (referrer.walletBalance || 0) + 100;
-                await referrer.save();
+                // ✅ Ensure Wallet exists
+                let referrerWallet = await Wallet.findOne({ userId: referrer._id });
+                if (!referrerWallet) {
+                    referrerWallet = new Wallet({ userId: referrer._id, balance: 0 });
+                }
+
+                // ✅ Apply Referral Bonus
+                referrerWallet.balance += 100;
+                await referrerWallet.save();
                 console.log("Referral bonus applied to referrer:", referrer._id);
             }
         }
 
-        // Booking status ko "Completed" set karo aur save karo
+        // ✅ Mark Booking as Completed & Save History
         booking.status = "Completed";
-        await booking.save();
+        booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
 
-        res.status(200).json({ message: "Booking completed successfully, referral bonus applied if eligible" });
+        await booking.save();
+        res.status(200).json({ message: "Booking completed successfully, referral bonus applied if eligible", booking });
+
     } catch (error) {
         console.error("Error in completeBooking:", error);
-    }}
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};

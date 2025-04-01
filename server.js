@@ -19,6 +19,8 @@ const paymentRoutes = require("./routes/paymentRoutes");
 
 dotenv.config();
 
+const mainWalletRoutes = require("./routes/mainWallatRoute.js");
+
 // ✅ Connect to MongoDB (Remove Deprecated Options)
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected Successfully"))
@@ -48,6 +50,7 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 // app.use("/api/payout", referralService);
 app.use("/api/schedule", scheduleRoutes);
+app.use("/api/wallet", mainWalletRoutes);
 
 console.log("✅ Registered Routes:");
 app._router.stack.forEach((r) => {

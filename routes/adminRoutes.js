@@ -22,8 +22,10 @@ router.post("/login", loginAdmin);
 router.post("/register", registerAdmin); // ✅ Only Super Admin can register new admins
 
 // ✅ User Management Routes
-router.get("/users", protect, authorizeRoles("super_admin", "admin"), getAllUsers);
+router.get("/admin-users", protect, authorizeRoles("super_admin", "admin"), getAllUsers);
+router.get("/users", getAllUsers);
 router.get("/shop-owners", protect, authorizeRoles("super_admin", "admin"), getAllShopOwners);
+router.get("/shopOwners", getAllShopOwners);
 
 // ✅ Salon Management Routes
 router.get("/shop-requests", protect, authorizeRoles("super_admin", "admin"), getPendingSalonRequests);
