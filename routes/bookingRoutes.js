@@ -1,30 +1,34 @@
-const express = require('express');
-const router = express.Router();
-const { 
-    createBooking, 
-    getUserBookings, 
-    getSalonBookings, 
-    confirmBooking, 
-    cancelBooking, 
-    completeBooking 
-} = require('../controllers/bookingController');
+    const express = require('express');
+    const router = express.Router();
+    const { 
+        createBooking, 
+        getUserBookings, 
+        getSalonBookings, 
+        confirmBooking, 
+        cancelBooking, 
+        completeBooking, 
+        cancelUnpaidBooking 
+    } = require('../controllers/bookingController');
 
-// Route to create a booking (User Books Appointment)
-router.post('/create', createBooking);
+    // ✅ Route to create a booking (Initially Pending)
+    router.post('/create', createBooking);
 
-// Get all bookings for a user
-router.get('/user/:userId', getUserBookings);
+    // ✅ Get all bookings for a user
+    router.get('/user/:userId', getUserBookings);
 
-// Get all bookings for a salon
-router.get('/salon/:salonId', getSalonBookings);
+    // ✅ Get all bookings for a salon
+    router.get('/salon/:salonId', getSalonBookings);
 
-// Confirm a booking after payment
-router.post('/confirm/:bookingId', confirmBooking);
+    // ✅ Confirm a booking after payment
+    router.post('/confirm/:bookingId', confirmBooking);
 
-// Cancel a booking
-router.post('/cancel/:bookingId', cancelBooking);
+    // ✅ Auto-Cancel booking if payment is not done
+    router.post('/cancel-unpaid/:bookingId', cancelUnpaidBooking);
 
-// Mark a booking as completed
-router.post('/complete/:bookingId', completeBooking);
+    // ✅ Manually Cancel a booking
+    router.post('/cancel/:bookingId', cancelBooking);
 
-module.exports = router;
+    // ✅ Mark a booking as completed
+    router.post('/complete/:bookingId', completeBooking);
+
+    module.exports = router;

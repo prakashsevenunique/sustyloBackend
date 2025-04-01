@@ -21,11 +21,12 @@ const storage = multer.diskStorage({
         } else if (file.fieldname === "salonAgreement") {
             cb(null, "uploads/salonAgreements/");
         } else {
-            cb(new Error("Invalid file field"), null);
+            cb(new Error("❌ Invalid file field: " + file.fieldname), null);
         }
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + path.extname(file.originalname)); // Save as original format first
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique filename
     }
 });
 
@@ -36,7 +37,7 @@ const fileFilter = (req, file, cb) => {
     } else if (file.fieldname === "salonAgreement" && file.mimetype === "application/pdf") {
         cb(null, true);
     } else {
-        cb(new Error("Invalid file type"), false); // Reject files if they don’t match allowed types
+        cb(new Error("❌ Invalid file type: " + file.mimetype), false); // Reject invalid files
     }
 };
 
@@ -47,26 +48,27 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }, // Max file size 10MB
 });
 
-// ✅ Convert Uploaded Images to JPG
+// ✅ Convert Uploaded Images to JPG (Compression)
 const convertToJpg = async (req, res, next) => {
     if (!req.files || !req.files.salonPhotos) return next();
 
-    await Promise.all(
-        req.files.salonPhotos.map(async (file) => {
-            const outputFilePath = file.path.replace(path.extname(file.path), ".jpg");
-            try {
+    try {
+        await Promise.all(
+            req.files.salonPhotos.map(async (file) => {
+                const outputFilePath = file.path.replace(path.extname(file.path), ".jpg");
                 await sharp(file.path)
+                    .resize({ width: 1024 }) // Resize images to max width of 1024px
                     .jpeg({ quality: 80 })
                     .toFile(outputFilePath);
                 fs.unlinkSync(file.path); // Delete original file after conversion
                 file.path = outputFilePath; // Update file path
-            } catch (error) {
-                return next(new Error("Error during image conversion: " + error.message));
-            }
-        })
-    );
-
-    next();
+            })
+        );
+        next();
+    } catch (error) {
+        console.error("❌ Error during image conversion:", error);
+        return res.status(500).json({ message: "Image conversion failed!" });
+    }
 };
 
 module.exports = { upload, convertToJpg };

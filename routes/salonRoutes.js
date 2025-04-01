@@ -1,42 +1,62 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { 
-    createBooking, 
-    getUserBookings, 
-    getSalonBookings, 
-    confirmBooking, 
-    cancelBooking, 
-    completeBooking 
-} = require('../controllers/bookingController');
-const { getNearbySalons, SalonLead, getSalonById } = require('../controllers/salonController');
+const {
+  createBooking,
+  getUserBookings,
+  getSalonBookings,
+  confirmBooking,
+  cancelBooking,
+  completeBooking,
+} = require("../controllers/bookingController");
+const {
+  getNearbySalons,
+  SalonLead,
+  getSalonById,
+  updateSalon,  // ✅ Import updateSalon controller
+} = require("../controllers/salonController");
 
+const {upload, convertToJpg} = require("../authMiddleware/upload"); // ✅ Multer for file uploads
+const authMiddleware = require("../authMiddleware/authMiddleware");
 
-// lead for sallon
-router.post("/lead/salon",SalonLead)
+// ✅ Lead for salon
+router.post("/lead/salon", SalonLead);
 
-// nearby sallon
-router.get('/nearby', getNearbySalons);
+// ✅ Nearby salons
+router.get("/nearby", getNearbySalons);
 
-//  single view salon as completed
-router.get('/view/:id', getSalonById);
+// ✅ Single salon view
+router.get("/view/:id", getSalonById);
 
-// Route to create a booking (User Books Appointment)
-router.post('/create', createBooking);
+// ✅ Update salon details (Owner updates profile)
+router.put(
+    "/update/:salonId",
+    upload.fields([
+      { name: "salonPhotos", maxCount: 5 }, 
+      { name: "salonAgreement", maxCount: 1 }
+    ]),
+    convertToJpg,
+    updateSalon
+);
+  
+
+// ✅ Booking Routes
+
+// Create a booking (User Books Appointment)
+router.post("/create", createBooking);
 
 // Get all bookings for a user
-router.get('/user/:userId', getUserBookings);
+router.get("/user/:userId", getUserBookings);
 
 // Get all bookings for a salon
-router.get('/salon/:salonId', getSalonBookings);
+router.get("/salon/:salonId", getSalonBookings);
 
 // Confirm a booking after payment
-router.post('/confirm/:bookingId', confirmBooking);
+router.post("/confirm/:bookingId", confirmBooking);
 
 // Cancel a booking
-router.post('/cancel/:bookingId', cancelBooking);
+router.post("/cancel/:bookingId", cancelBooking);
 
 // Mark a booking as completed
-router.post('/complete/:bookingId', completeBooking);
-
+router.post("/complete/:bookingId", completeBooking);
 
 module.exports = router;

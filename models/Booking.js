@@ -7,8 +7,8 @@ const BookingSchema = new mongoose.Schema({
     timeSlot: { type: String, required: true },
     seatNumber: { type: Number, required: true },
     serviceDuration: { type: Number, required: true },
-    status: { type: String, enum: ["Confirmed", "Completed", "Cancelled"], default: "Confirmed" },
-    paymentStatus: { type: String, enum: ["Pending", "Paid"], default: "Pending" }
+    status: { type: String, enum: ["Pending", "Confirmed", "Completed", "Cancelled"], default: "Pending" },
+    paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" }
 });
 
 module.exports = mongoose.model("Booking", BookingSchema);

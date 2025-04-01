@@ -20,19 +20,20 @@ exports.SalonLead = async (req, res) => {
             return res.status(400).json({ message: "Salon with this mobile number already exists." });
         }
 
-        // ✅ Create new salon (without photos & agreement)
+        // ✅ Create new salon with "pending" status
         const newSalon = new Salon({
             ownerName,
             salonName,
             mobile,
             email,
-            salonAddress
+            salonAddress,
+            status: "pending" // ✅ Status set to pending until full details are updated
         });
 
         await newSalon.save();
 
         res.status(201).json({
-            message: "Salon registered successfully! You can now upload photos via the update API.",
+            message: "Salon registered successfully! Complete details using the update API. Status remains 'pending' until approved by admin.",
             salon: newSalon
         });
     } catch (error) {
@@ -54,6 +55,103 @@ exports.getSalonById = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+
+// ✅ Function to extract latitude & longitude from Google Maps URL
+const extractLatLng = (mapUrl) => {
+    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = mapUrl.match(regex);
+    if (match) {
+        return { latitude: parseFloat(match[1]), longitude: parseFloat(match[2]) };
+    }
+    return { latitude: null, longitude: null };
+};
+
+// ✅ Update Salon API (Har Detail Update Karega)
+exports.updateSalon = async (req, res) => {
+    try {
+        const { salonId } = req.params;
+
+        // ✅ Find existing salon
+        let salon = await Salon.findById(salonId);
+        if (!salon) return res.status(404).json({ error: "Salon not found" });
+        console.log("salon is:", salon);
+        // ✅ Extract fields from request body
+        const {
+            ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
+            socialLinks, openingHours, facilities, services, category
+        } = req.body;
+
+        // ✅ Extract latitude & longitude from Map URL
+        let { latitude, longitude } = salon;
+        if (locationMapUrl) {
+            const coords = extractLatLng(locationMapUrl);
+            latitude = coords.latitude;
+            longitude = coords.longitude;
+        }
+
+        // ✅ Handle file uploads
+        let salonPhotos = salon.salonPhotos || [];
+        let salonAgreement = salon.salonAgreement || "";
+
+        if (req.files && req.files["salonPhotos"]) {
+            salonPhotos = req.files["salonPhotos"].map((file) => file.path);
+        }
+
+        if (req.files && req.files["salonAgreement"]) {
+            salonAgreement = req.files["salonAgreement"][0].path;
+        }
+
+        // ✅ Convert services to array (agar services bheje ho to)
+        let parsedServices = [];
+        if (services) {
+            try {
+                parsedServices = JSON.parse(services);
+            } catch (error) {
+                return res.status(400).json({ error: "Invalid services format. Send a valid JSON array." });
+            }
+        }
+
+        // ✅ Update salon details
+        salon = await Salon.findByIdAndUpdate(
+            salonId,
+            {
+                ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
+                socialLinks, openingHours, facilities, category, latitude, longitude,
+                salonPhotos, salonAgreement, services: parsedServices
+            },
+            { new: true }
+        );
+
+        res.status(200).json({ message: "Salon updated successfully. Status remains 'pending' until admin approval.", salon });
+    } catch (error) {
+        console.error("Error updating salon:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};  
+
+exports.approveSalon = async (req, res) => {
+    try {
+        const { salonId } = req.params;
+
+        // ✅ Find salon
+        let salon = await Salon.findById(salonId);
+        if (!salon) return res.status(404).json({ message: "Salon not found" });
+
+        // ✅ Ensure all details are filled before approval
+        if (!salon.salonPhotos.length || !salon.salonAgreement || !salon.latitude || !salon.longitude) {
+            return res.status(400).json({ message: "Complete all required details before approval." });
+        }
+
+        // ✅ Update status to "approved"
+        salon.status = "approved";
+        await salon.save();
+
+        res.status(200).json({ message: "Salon approved successfully and is now live.", salon });
+    } catch (error) {
+        res.status(500).json({ message: "Error approving salon", error: error.message });
+    }
+};
+  
 exports.updateShopOwner = async (req, res) => {
     try {
         const { id } = req.params;
@@ -90,6 +188,7 @@ exports.getAllSalons = async (req, res) => {
 };
 
 // ✅ Get Nearby Salons Based on User Location
+
 exports.getNearbySalons = async (req, res) => {
     try {
         const { latitude, longitude, gender, category } = req.query;
@@ -98,87 +197,53 @@ exports.getNearbySalons = async (req, res) => {
             return res.status(400).json({ message: "Latitude and Longitude are required." });
         }
 
-        const userLocation = [parseFloat(longitude), parseFloat(latitude)]; // MongoDB needs [long, lat]
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
 
-        const query = {};
+        const salons = await Salon.find({
+            latitude: { $exists: true, $ne: null },
+            longitude: { $exists: true, $ne: null },
+            "services.gender": gender,
+            "services.name": { $regex: category, $options: "i" }
+        })
+        .select("salonName salonAddress salonPhotos latitude longitude services") // ✅ Only required fields
+        .lean();
 
-        if (gender) {
-            query["services.gender"] = gender;
-        }
-
-        if (category) {
-            query["services.name"] = { $regex: category, $options: "i" };
-        }
-
-        const salons = await Salon.aggregate([
-            {
-                $match: {
-                    latitude: { $exists: true, $ne: null },
-                    longitude: { $exists: true, $ne: null },
-                    services: {
-                        $elemMatch: {
-                            gender: gender,
-                            title: { $regex: category, $options: "i" }
-                        }
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    distance: {
-                        $multiply: [
-                            6371, // Earth radius in KM
-                            {
-                                $acos: {
-                                    $add: [
-                                        {
-                                            $multiply: [
-                                                { $sin: { $degreesToRadians: parseFloat(latitude) } },
-                                                { $sin: { $degreesToRadians: "$latitude" } }
-                                            ]
-                                        },
-                                        {
-                                            $multiply: [
-                                                { $cos: { $degreesToRadians: parseFloat(latitude) } },
-                                                { $cos: { $degreesToRadians: "$latitude" } },
-                                                { $cos: { $subtract: [
-                                                    { $degreesToRadians: "$longitude" },
-                                                    { $degreesToRadians: parseFloat(longitude) }
-                                                ] } }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        ]
-                    }
-                }
-            },
-            { $sort: { distance: 1 } }, // ✅ Nearest salon first
-            {
-                $lookup: {
-                    from: "reviews",
-                    localField: "_id",
-                    foreignField: "salonId",
-                    as: "reviews"
-                }
-            },
-            {
-                $addFields: {
-                    averageRating: { $ifNull: [{ $avg: "$reviews.rating" }, 0] }
-                }
-            },
-            {
-                $sort: { distance: 1, averageRating: -1 } // ✅ Sort by distance, then rating
-            }
-        ]);
         if (salons.length === 0) {
             return res.status(404).json({ message: "No salons found." });
         }
 
-        res.status(200).json({ count: salons.length, salons });
+        // **Calculate Distance (Haversine Formula)**
+        salons.forEach((salon) => {
+            const R = 6371; // Earth radius in km
+            const dLat = (Math.PI / 180) * (salon.latitude - lat);
+            const dLon = (Math.PI / 180) * (salon.longitude - lon);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos((Math.PI / 180) * lat) *
+                Math.cos((Math.PI / 180) * salon.latitude) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            salon.distance = R * c; // Distance in km
+        });
+
+        salons.sort((a, b) => a.distance - b.distance); // ✅ Nearest first
+
+        // **Filter Services (only category-matched services)**
+        const filteredSalons = salons.map((salon) => ({
+            salonName: salon.salonName,
+            salonAddress: salon.salonAddress,
+            salonPhotos: salon.salonPhotos,
+            distance: salon.distance.toFixed(2) + " km",
+            services: salon.services.filter(service => 
+                service.gender === gender && 
+                new RegExp(category, "i").test(service.name)
+            )
+        }));
+
+        res.status(200).json({ count: filteredSalons.length, salons: filteredSalons });
     } catch (error) {
-        console.error("Error occurred while fetching nearby salons:", error);
+        console.error("Error fetching nearby salons:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
