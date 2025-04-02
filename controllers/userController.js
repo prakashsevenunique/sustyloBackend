@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const {generateOtp, verifyOtp , sendOtp } = require("../utils/otpService");
@@ -9,6 +10,7 @@ const { addReferralBonus } = require("../services/referralService");
 
 // ✅ Send OTP
 // Send OTP to the user
+// Generate and send OTP Controller
 exports.sendOtpController = async (req, res) => {
   try {
     const { mobileNumber } = req.body;
@@ -29,7 +31,7 @@ exports.sendOtpController = async (req, res) => {
   }
 };
 
-// ✅ OTP Verify & User Login API
+// OTP Verify & User Login API
 const generateReferralCode = () => crypto.randomBytes(4).toString("hex").toUpperCase();
 
 exports.verifyOTPController = async (req, res) => {
@@ -89,12 +91,23 @@ exports.verifyOTPController = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ 
-      message: "OTP verified successfully", 
-      user, 
-      wallet: await Wallet.findOne({ user: user._id }) 
-    });
+    // ✅ Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, mobileNumber: user.mobileNumber },
+      process.env.JWT_SECRET, // Secret key from your .env file
+      { expiresIn: '1h' } // Token expiration time (optional)
+    );
 
+    // ✅ Save Token in the User document (optional)
+    user.token = token;
+    await user.save();
+
+    return res.status(200).json({
+      message: "OTP verified successfully",
+      user,
+      wallet: await Wallet.findOne({ user: user._id }),
+      token, // Send the token back to the client
+    });
   } catch (error) {
     console.error("Error in verifyOTPController:", error);
     return res.status(500).json({ message: "Internal server error" });
