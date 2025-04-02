@@ -174,18 +174,17 @@ exports.getUserInfo = async (req, res) => {
     const userId = req.user.userId; // Extracted from token
 
     // Find user details
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(userId).select("-password").populate('wallet', "balance");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find wallet details
-    const wallet = await Wallet.findOne({ user: userId });
+  
+ 
 
     return res.status(200).json({
       message: "User details fetched successfully",
-      user,
-      wallet,
+      user
     });
   } catch (error) {
     console.error("Error in getUserInfo:", error);

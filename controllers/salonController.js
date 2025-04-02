@@ -232,6 +232,7 @@ exports.getNearbySalons = async (req, res) => {
         // **Filter Services (only category-matched services)**
         const filteredSalons = salons.map((salon) => ({
             salonName: salon.salonName,
+            _id:salon._id,
             salonAddress: salon.salonAddress,
             salonPhotos: salon.salonPhotos,
             distance: salon.distance.toFixed(2) + " km",
