@@ -6,10 +6,11 @@ const {
   getUserById,
   sendOtpController,
   verifyOTPController,
-  getReferralCode, // ✅ Add this import
+  getReferralCode,
+  getUserInfo
 } = require("../controllers/userController"); // ✅ Ensure correct import path
 
-const referralService = require("../services/referralService");
+const { protect } = require("../authMiddleware/authMiddleware"); // ✅ Correct import
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.post("/update-location", updateLocation);
 router.put("/update-profile/:id", updateUserProfile);
 router.get("/get-all", getAllUsers);
 router.get("/get/:id", getUserById);
-router.get("/referral/:userId", getReferralCode); // ✅ Now it will work
+router.get("/referral/:userId", getReferralCode);
+router.get("/user-info", protect, getUserInfo); // ✅ Fixed middleware usage
 
 module.exports = router;

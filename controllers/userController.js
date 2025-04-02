@@ -169,6 +169,30 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
+exports.getUserInfo = async (req, res) => {
+  try {
+    const userId = req.user.userId; // Extracted from token
+
+    // Find user details
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find wallet details
+    const wallet = await Wallet.findOne({ user: userId });
+
+    return res.status(200).json({
+      message: "User details fetched successfully",
+      user,
+      wallet,
+    });
+  } catch (error) {
+    console.error("Error in getUserInfo:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 // ✅ Get All Users
 exports.getAllUsers = async (req, res) => {
   try {
