@@ -212,7 +212,7 @@ exports.getAllSalons = async (req, res) => {
 
 exports.getNearbySalons = async (req, res) => {
     try {
-        const { latitude, longitude, gender, category } = req.query;
+        const { latitude, longitude } = req.query;
 
         if (!latitude || !longitude) {
             return res.status(400).json({ message: "Latitude and Longitude are required." });
@@ -221,53 +221,71 @@ exports.getNearbySalons = async (req, res) => {
         const lat = parseFloat(latitude);
         const lon = parseFloat(longitude);
 
-        const salons = await Salon.find({
-            latitude: { $exists: true, $ne: null },
-            longitude: { $exists: true, $ne: null },
-            "services.gender": gender,
-            "services.name": { $regex: category, $options: "i" }
-        })
-        .select("salonName salonAddress salonPhotos latitude longitude services") // ✅ Only required fields
-        .lean();
+        console.log("🔍 Searching for salons at:", lat, lon);
+
+        // Convert all stored lat/lng to numbers to avoid mismatches
+        await Salon.updateMany({}, [
+            { 
+                $set: { 
+                    latitude: { $toDouble: "$latitude" }, 
+                    longitude: { $toDouble: "$longitude" }
+                } 
+            }
+        ]);
+
+        // Function to calculate distance
+        const calculateDistance = (salonLat, salonLon) => {
+            const R = 6371; // Earth radius in km
+            const dLat = (Math.PI / 180) * (salonLat - lat);
+            const dLon = (Math.PI / 180) * (salonLon - lon);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos((Math.PI / 180) * lat) *
+                Math.cos((Math.PI / 180) * salonLat) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in km
+        };
+
+        const searchWithinRadius = async (radius) => {
+            console.log(`🔍 Searching salons within ${radius} km...`);
+            
+            const salons = await Salon.find({
+                latitude: { $exists: true, $ne: null },
+                longitude: { $exists: true, $ne: null }
+            }).lean();
+
+            // Calculate distance for each salon
+            const filteredSalons = salons
+                .map(salon => {
+                    salon.latitude = parseFloat(salon.latitude);
+                    salon.longitude = parseFloat(salon.longitude);
+                    salon.distance = calculateDistance(salon.latitude, salon.longitude);
+                    return salon;
+                })
+                .filter(salon => salon.distance <= radius) // Filter salons within the radius
+                .sort((a, b) => a.distance - b.distance); // Sort by distance
+
+            console.log(`Found ${filteredSalons.length} salons within ${radius} km`);
+
+            return filteredSalons;
+        };
+
+        // Check in increasing radius
+        let salons = await searchWithinRadius(2);
+        if (salons.length === 0) salons = await searchWithinRadius(5);
+        if (salons.length === 0) salons = await searchWithinRadius(10);
 
         if (salons.length === 0) {
             return res.status(404).json({ message: "No salons found." });
         }
 
-        // **Calculate Distance (Haversine Formula)**
-        salons.forEach((salon) => {
-            const R = 6371; // Earth radius in km
-            const dLat = (Math.PI / 180) * (salon.latitude - lat);
-            const dLon = (Math.PI / 180) * (salon.longitude - lon);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos((Math.PI / 180) * lat) *
-                Math.cos((Math.PI / 180) * salon.latitude) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            salon.distance = R * c; // Distance in km
-        });
+        res.status(200).json({ count: salons.length, salons });
 
-        salons.sort((a, b) => a.distance - b.distance); // ✅ Nearest first
-
-        // **Filter Services (only category-matched services)**
-        const filteredSalons = salons.map((salon) => ({
-            salonName: salon.salonName,
-            _id:salon._id,
-            salonAddress: salon.salonAddress,
-            salonPhotos: salon.salonPhotos,
-            distance: salon.distance.toFixed(2) + " km",
-            services: salon.services.filter(service => 
-                service.gender === gender && 
-                new RegExp(category, "i").test(service.name)
-            )
-        }));
-
-        res.status(200).json({ count: filteredSalons.length, salons: filteredSalons });
     } catch (error) {
-        console.error("Error fetching nearby salons:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+        console.error("🚨 Error:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
 };
 
 // ✅ Add Review to Salon

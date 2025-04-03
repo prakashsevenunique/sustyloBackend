@@ -117,25 +117,35 @@ exports.verifyOTPController = async (req, res) => {
 // ✅ Update User Location (Every login)
 exports.updateLocation = async (req, res) => {
   try {
-    console.log("Received request body:", req.body); // Debugging log
+    console.log("Received request body:", req.body);
 
     const { mobileNumber, latitude, longitude } = req.body;
 
     if (!mobileNumber || !latitude || !longitude) {
-      console.log("Missing fields:", { mobileNumber, latitude, longitude }); // Debug log
+      console.log("Missing fields:", { mobileNumber, latitude, longitude });
       return res.status(400).json({ error: "Mobile number and location required" });
     }
 
-    const user = await User.findOneAndUpdate(
-      { mobileNumber },
-      { location: { latitude, longitude } },
-      { new: true }
-    );
+    const user = await User.findOne({ mobileNumber });
 
     if (!user) {
       console.log("User not found for mobile number:", mobileNumber);
       return res.status(404).json({ error: "User not found" });
     }
+
+    // Check if location is actually different
+    if (
+      user.location &&
+      user.location.latitude === latitude &&
+      user.location.longitude === longitude
+    ) {
+      console.log("Same location, no update needed.");
+      return res.json({ message: "Location is already up to date", location: user.location });
+    }
+
+    // Update location only if it's different
+    user.location = { latitude, longitude };
+    await user.save();
 
     res.json({ message: "Location updated successfully", location: user.location });
   } catch (error) {
