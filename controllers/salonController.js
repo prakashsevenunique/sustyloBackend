@@ -1,5 +1,6 @@
 const Salon = require("../models/salon");
 const User = require("../models/User");
+const mongoose = require("mongoose");
 
 // ✅ Register Salon and lead (With File Uploads)
 exports.SalonLead = async (req, res) => {
@@ -70,16 +71,35 @@ const extractLatLng = (mapUrl) => {
 exports.updateSalon = async (req, res) => {
     try {
         const { salonId } = req.params;
+        console.log("📌 Update Salon API hit with Salon ID:", salonId);
+
+        // ✅ Validate Salon ID
+        if (!mongoose.Types.ObjectId.isValid(salonId)) {
+            return res.status(400).json({ error: "Invalid Salon ID" });
+        }
 
         // ✅ Find existing salon
         let salon = await Salon.findById(salonId);
-        if (!salon) return res.status(404).json({ error: "Salon not found" });
-        console.log("salon is:", salon);
-        // ✅ Extract fields from request body
+        if (!salon) {
+            console.error("🚨 Salon not found:", salonId);
+            return res.status(404).json({ error: "Salon not found" });
+        }
+
+        console.log("📌 Existing Salon Data:", salon);
+        console.log("📌 Request Body:", req.body);
+
         const {
             ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
             socialLinks, openingHours, facilities, services, category
         } = req.body;
+
+        // ✅ Check if the new email is already in use by another salon
+        if (email && email !== salon.email) {
+            const existingSalon = await Salon.findOne({ email });
+            if (existingSalon) {
+                return res.status(400).json({ error: "This email is already used by another salon." });
+            }
+        }
 
         // ✅ Extract latitude & longitude from Map URL
         let { latitude, longitude } = salon;
@@ -101,7 +121,7 @@ exports.updateSalon = async (req, res) => {
             salonAgreement = req.files["salonAgreement"][0].path;
         }
 
-        // ✅ Convert services to array (agar services bheje ho to)
+        // ✅ Convert services to array
         let parsedServices = [];
         if (services) {
             try {
@@ -122,12 +142,13 @@ exports.updateSalon = async (req, res) => {
             { new: true }
         );
 
+        console.log("✅ Salon Updated Successfully:", salon);
         res.status(200).json({ message: "Salon updated successfully. Status remains 'pending' until admin approval.", salon });
     } catch (error) {
-        console.error("Error updating salon:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("🚨 Error updating salon:", error);
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
-};  
+};
 
 exports.approveSalon = async (req, res) => {
     try {

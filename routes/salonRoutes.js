@@ -1,62 +1,46 @@
 const express = require("express");
 const router = express.Router();
 const {
-  createBooking,
-  getUserBookings,
-  getSalonBookings,
-  confirmBooking,
-  cancelBooking,
-  completeBooking,
-} = require("../controllers/bookingController");
-const {
   getNearbySalons,
   SalonLead,
   getSalonById,
-  updateSalon,  // ✅ Import updateSalon controller
+  updateSalon,
+  approveSalon,
+  getAllSalons,
+  addReview,
 } = require("../controllers/salonController");
 
-const {upload, convertToJpg} = require("../authMiddleware/upload"); // ✅ Multer for file uploads
-const authMiddleware = require("../authMiddleware/authMiddleware");
+const { upload, convertToJpg } = require("../authMiddleware/upload");
+const { protect, authorizeRoles, authorizeSuperAdmin } = require("../authMiddleware/authMiddleware");
 
-// ✅ Lead for salon
-router.post("/lead/salon", SalonLead);
+// ✅ Register a new salon lead (Minimal Details)
+router.post("/lead", SalonLead);
 
-// ✅ Nearby salons
+// ✅ Approve salon (Admin only)
+router.put("/approve/:salonId", protect, authorizeSuperAdmin, approveSalon);
+
+
+// ✅ Get all salons (With optional status filter)
+router.get("/all", getAllSalons);
+
+// ✅ Get nearby salons (Based on location & filters)
 router.get("/nearby", getNearbySalons);
 
-// ✅ Single salon view
+// ✅ Get single salon by ID
 router.get("/view/:id", getSalonById);
 
 // ✅ Update salon details (Owner updates profile)
 router.put(
-    "/update/:salonId",
-    upload.fields([
-      { name: "salonPhotos", maxCount: 5 }, 
-      { name: "salonAgreement", maxCount: 1 }
-    ]),
-    convertToJpg,
-    updateSalon
+  "/update/:salonId",
+  upload.fields([
+    { name: "salonPhotos", maxCount: 5 },
+    { name: "salonAgreement", maxCount: 1 },
+  ]),
+  convertToJpg,
+  updateSalon
 );
-  
 
-// ✅ Booking Routes
-
-// Create a booking (User Books Appointment)
-router.post("/create", createBooking);
-
-// Get all bookings for a user
-router.get("/user/:userId", getUserBookings);
-
-// Get all bookings for a salon
-router.get("/salon/:salonId", getSalonBookings);
-
-// Confirm a booking after payment
-router.post("/confirm/:bookingId", confirmBooking);
-
-// Cancel a booking
-router.post("/cancel/:bookingId", cancelBooking);
-
-// Mark a booking as completed
-router.post("/complete/:bookingId", completeBooking);
+// ✅ Add review to a salon
+router.post("/review/:salonId", addReview);
 
 module.exports = router;

@@ -3,19 +3,21 @@ const jwt = require("jsonwebtoken");
 // ✅ Middleware to Protect Routes
 const protect = (req, res, next) => {
     try {
-        const token= req.headers.authorization;
+        const token = req.headers.authorization;
 
         if (!token || !token.startsWith("Bearer ")) {
+            console.error("❌ No Token or Invalid Format:", token);
             return res.status(401).json({ message: "Unauthorized: Token missing or invalid format" });
         }
 
         // ✅ Verify Token
         const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET);
+        console.log("✅ Token Verified:", decoded);
+        
         req.user = decoded;
-
         next();
     } catch (error) {
-        console.error("JWT Verification Error:", error.message);
+        console.error("❌ JWT Verification Error:", error.message);
         return res.status(401).json({ message: "Unauthorized: Invalid or expired token" });
     }
 };
