@@ -9,8 +9,6 @@ const referralService = require("../services/referralService");
 const { addReferralBonus } = require("../services/referralService");
 
 // ✅ Send OTP
-// Send OTP to the user
-// Generate and send OTP Controller
 exports.sendOtpController = async (req, res) => {
   try {
     const { mobileNumber } = req.body;

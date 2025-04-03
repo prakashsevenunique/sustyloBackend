@@ -3,7 +3,7 @@ const OTP = require("../models/otpModel"); // ✅ OTP model import karein
 
 // ✅ Generate 6-digit OTP
 const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
 // ✅ Send OTP via Fast2SMS
