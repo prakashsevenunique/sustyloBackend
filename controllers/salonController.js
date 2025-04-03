@@ -288,6 +288,32 @@ exports.getNearbySalons = async (req, res) => {
     }
 };
 
+exports.getTopReviewedSalons = async (req, res) => {
+    try {
+        console.log("🔍 Searching for top 5 reviewed salons...");
+
+        // Find top 5 salons sorted by review count in descending order
+        const salons = await Salon.find({
+            reviews: { $exists: true, $ne: null } // Ensure reviews exist
+        })
+            .sort({ "reviews.length": -1 }) // Sort by review count (highest first)
+            .limit(5) // Only get the top 5 salons
+            .lean();
+
+        console.log(`🟢 Found ${salons.length} top reviewed salons`);
+
+        if (salons.length === 0) {
+            return res.status(404).json({ message: "No reviewed salons found." });
+        }
+
+        res.status(200).json({ count: salons.length, salons });
+
+    } catch (error) {
+        console.error("🚨 Error:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
 // ✅ Add Review to Salon
 exports.addReview = async (req, res) => {
     try {

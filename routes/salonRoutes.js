@@ -7,6 +7,7 @@ const {
   updateSalon,
   approveSalon,
   getAllSalons,
+  getTopReviewedSalons,
   addReview,
 } = require("../controllers/salonController");
 
@@ -28,6 +29,9 @@ router.get("/nearby", getNearbySalons);
 
 // ✅ Get single salon by ID
 router.get("/view/:id", getSalonById);
+
+// get most review salon
+router.get("/mostreview", getTopReviewedSalons);
 
 // ✅ Update salon details (Owner updates profile)
 router.put(
