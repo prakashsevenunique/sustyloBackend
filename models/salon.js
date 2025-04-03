@@ -37,10 +37,13 @@ const SalonSchema = new mongoose.Schema(
             youtube: { type: String, default: "" },
         },
 
+        
+
         openingHours: {},
         facilities: [{ type: String }],
         services: [
             {
+                discount: { type: Number, default: 0 },
                 title: { type: String, required: true },
                 description: { type: String, required: true },
                 rate: { type: Number, required: true },

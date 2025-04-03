@@ -11,6 +11,7 @@ const createFolder = (folder) => {
 };
 createFolder("uploads/salonPhotos");
 createFolder("uploads/salonAgreements");
+createFolder("uploads/blogs"); // 🔹 Added for blog image uploads
 
 // ✅ Multer Storage Configuration
 const storage = multer.diskStorage({
@@ -20,6 +21,8 @@ const storage = multer.diskStorage({
             cb(null, "uploads/salonPhotos/");
         } else if (file.fieldname === "salonAgreement") {
             cb(null, "uploads/salonAgreements/");
+        } else if (file.fieldname === "blogImage") {  // 🔹 Added for blog images
+            cb(null, "uploads/blogs/");
         } else {
             cb(new Error("❌ Invalid file field: " + file.fieldname), null);
         }
@@ -36,8 +39,10 @@ const fileFilter = (req, file, cb) => {
         cb(null, true);
     } else if (file.fieldname === "salonAgreement" && file.mimetype === "application/pdf") {
         cb(null, true);
+    } else if (file.fieldname === "blogImage" && file.mimetype.startsWith("image/")) { // 🔹 Added for blogs
+        cb(null, true);
     } else {
-        cb(new Error("❌ Invalid file type: " + file.mimetype), false); // Reject invalid files
+        cb(new Error("❌ Invalid file type: " + file.mimetype), false);
     }
 };
 
@@ -50,20 +55,26 @@ const upload = multer({
 
 // ✅ Convert Uploaded Images to JPG (Compression)
 const convertToJpg = async (req, res, next) => {
-    if (!req.files || !req.files.salonPhotos) return next();
+    if (!req.files) return next();
 
     try {
-        await Promise.all(
-            req.files.salonPhotos.map(async (file) => {
-                const outputFilePath = file.path.replace(path.extname(file.path), ".jpg");
-                await sharp(file.path)
-                    .resize({ width: 1024 }) // Resize images to max width of 1024px
-                    .jpeg({ quality: 80 })
-                    .toFile(outputFilePath);
-                fs.unlinkSync(file.path); // Delete original file after conversion
-                file.path = outputFilePath; // Update file path
-            })
-        );
+        const processImages = async (files) => {
+            return Promise.all(
+                files.map(async (file) => {
+                    const outputFilePath = file.path.replace(path.extname(file.path), ".jpg");
+                    await sharp(file.path)
+                        .resize({ width: 1024 }) // Resize images to max width of 1024px
+                        .jpeg({ quality: 80 })
+                        .toFile(outputFilePath);
+                    fs.unlinkSync(file.path); // Delete original file after conversion
+                    file.path = outputFilePath; // Update file path
+                })
+            );
+        };
+
+        if (req.files.salonPhotos) await processImages(req.files.salonPhotos);
+        if (req.files.blogImage) await processImages(req.files.blogImage); // 🔹 Added for blog images
+
         next();
     } catch (error) {
         console.error("❌ Error during image conversion:", error);

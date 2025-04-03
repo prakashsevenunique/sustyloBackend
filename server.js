@@ -17,6 +17,7 @@ const referralService = require("./services/referralService");
 // const payinRoutes = require("./routes/payinRoutes"); // ✅ Correct Import
 const paymentRoutes = require("./routes/paymentRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const blogRoutes = require("./routes/blogRoutes.js");
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/wallet", mainWalletRoutes);
 app.use("/api", contactRoutes);
+app.use("/api/blogs", blogRoutes);
 
 console.log("✅ Registered Routes:");
 app._router.stack.forEach((r) => {
@@ -60,6 +62,8 @@ app._router.stack.forEach((r) => {
         console.log(`${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
     }
 });
+
+app.use("/uploads", express.static("uploads"));
 
 // ✅ Default Route
 app.get("/", (req, res) => {
