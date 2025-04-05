@@ -9,7 +9,8 @@ const {
   getAllSalons,
   getTopReviewedSalons,
   addReview,
-  getReviews
+  getReviews,
+  getNearbySalonsByService
 } = require("../controllers/salonController");
 
 const { upload, convertToJpg } = require("../authMiddleware/upload");
@@ -36,6 +37,9 @@ router.get("/mostreview", getTopReviewedSalons);
 
 // get rebiew
 router.get("/review/:salonId", getReviews);
+
+// NearBy salons by service
+router.get("/nearby", getNearbySalonsByService);
 
 // ✅ Update salon details (Owner updates profile)
 router.put(
