@@ -41,7 +41,7 @@ exports.SalonLead = async (req, res) => {
         console.error("❌ Error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
-};  
+};
 
 // ✅ Get Salon by ID
 exports.getSalonById = async (req, res) => {
@@ -172,7 +172,7 @@ exports.approveSalon = async (req, res) => {
         res.status(500).json({ message: "Error approving salon", error: error.message });
     }
 };
-  
+
 exports.updateShopOwner = async (req, res) => {
     try {
         const { id } = req.params;
@@ -225,11 +225,11 @@ exports.getNearbySalons = async (req, res) => {
 
         // Convert all stored lat/lng to numbers to avoid mismatches
         await Salon.updateMany({}, [
-            { 
-                $set: { 
-                    latitude: { $toDouble: "$latitude" }, 
+            {
+                $set: {
+                    latitude: { $toDouble: "$latitude" },
                     longitude: { $toDouble: "$longitude" }
-                } 
+                }
             }
         ]);
 
@@ -249,7 +249,7 @@ exports.getNearbySalons = async (req, res) => {
 
         const searchWithinRadius = async (radius) => {
             console.log(`🔍 Searching salons within ${radius} km...`);
-            
+
             const salons = await Salon.find({
                 latitude: { $exists: true, $ne: null },
                 longitude: { $exists: true, $ne: null }
@@ -284,8 +284,8 @@ exports.getNearbySalons = async (req, res) => {
 
     } catch (error) {
         console.error("🚨 Error:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
 };
 
 exports.getTopReviewedSalons = async (req, res) => {
@@ -310,8 +310,8 @@ exports.getTopReviewedSalons = async (req, res) => {
 
     } catch (error) {
         console.error("🚨 Error:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
 };
 
 // ✅ Add Review to Salon
@@ -342,5 +342,24 @@ exports.addReview = async (req, res) => {
         res.status(201).json({ message: "Review added successfully.", salon });
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};
+
+
+exports.getReviews = async (req, res) => {
+    try {
+        const { salonId } = req.params;
+
+        const salon = await Salon.findById(salonId)
+            .select('reviews')
+            .populate('reviews.userId', 'name phone'); // populate user's name & phone
+
+        if (!salon) {
+            return res.status(404).json({ message: "Salon not found." });
+        }
+
+        res.status(200).json({ reviews: salon.reviews });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch reviews", error: error.message });
     }
 };

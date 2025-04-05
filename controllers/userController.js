@@ -166,7 +166,7 @@ exports.updateUserProfile = async (req, res) => {
       id,
       { name, email, gender },
       { new: true }
-    );
+  ).populate(Wallet);
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
