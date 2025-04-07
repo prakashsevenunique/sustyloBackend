@@ -7,28 +7,58 @@
 
   exports.createBooking = async (req, res) => {
     try {
-        const { salonId, userId, date, timeSlot, seatNumber, serviceDuration } = req.body;
+        const { salonId, userId, date, timeSlot, seatNumber, services } = req.body;
 
-        if (!salonId || !userId || !date || !timeSlot || !seatNumber || !serviceDuration) {
-            return res.status(400).json({ error: "All fields are required" });
+        if (!salonId || !userId || !date || !timeSlot || !seatNumber || !services || !Array.isArray(services) || services.length === 0) {
+            return res.status(400).json({ error: "All fields and at least one service are required" });
         }
 
         // ✅ Check if seat is already booked
-        const existingBooking = await Booking.findOne({ salonId, date, timeSlot, seatNumber, status: "Confirmed" });
+        const existingBooking = await Booking.findOne({
+            salonId, date, timeSlot, seatNumber, status: "Confirmed"
+        });
 
         if (existingBooking) {
             return res.status(400).json({ error: "This seat is already booked for the selected time slot" });
         }
 
-        // ✅ Create a pending booking with history entry
+        // ✅ Calculate total amount & duration
+        let totalAmount = 0;
+        let totalMinutes = 0;
+
+        services.forEach(service => {
+            const effectiveRate = service.discount
+                ? service.rate - (service.rate * service.discount) / 100
+                : service.rate;
+
+            totalAmount += effectiveRate;
+
+            // convert duration to minutes (assumes "45 min", "1 hr 30 min" format)
+            const matches = service.duration.match(/(\d+)\s*hr[s]?\s*(\d+)?\s*min[s]?|(\d+)\s*min[s]?/i);
+            if (matches) {
+                if (matches[1]) {
+                    totalMinutes += parseInt(matches[1]) * 60 + (parseInt(matches[2]) || 0);
+                } else if (matches[3]) {
+                    totalMinutes += parseInt(matches[3]);
+                }
+            }
+        });
+
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const totalDuration = `${hours ? hours + ' hr ' : ''}${minutes} min`;
+
+        // ✅ Create booking
         const booking = new Booking({
             salonId,
             userId,
             date,
             timeSlot,
             seatNumber,
-            serviceDuration,
-            status: "Pending", // Initially pending until payment
+            services,
+            totalAmount,
+            totalDuration,
+            status: "Pending",
             paymentStatus: "Pending",
             bookingHistory: [{ status: "Pending", changedAt: new Date() }]
         });
@@ -41,7 +71,6 @@
         res.status(500).json({ error: "Internal server error" });
     }
 };
-
 
   // Get all bookings for a user
   exports.getUserBookings = async (req, res) => {

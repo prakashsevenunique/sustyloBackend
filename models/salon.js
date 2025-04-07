@@ -41,16 +41,16 @@ const SalonSchema = new mongoose.Schema(
 
         openingHours: {},
         facilities: [{ type: String }],
-        services: [
-            {
-                discount: { type: Number, default: 0 },
-                title: { type: String, required: true },
-                description: { type: String, required: true },
-                rate: { type: Number, required: true },
-                duration: { type: String, required: true },
-                gender: { type: String, enum: ["male", "female", "unisex"], required: true },
-            },
-        ],
+            services: [
+                {
+                    discount: { type: Number, default: 0 },
+                    title: { type: String, required: true },
+                    description: { type: String, required: true },
+                    rate: { type: Number, required: true },
+                    duration: { type: String, required: true },
+                    gender: { type: String, enum: ["male", "female", "unisex"], required: true },
+                },
+            ],
 
         category: { type: String },
         status: { type: String, enum: ["pending", "approved"], default: "pending" },
