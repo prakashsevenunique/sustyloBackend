@@ -92,8 +92,7 @@ exports.verifyOTPController = async (req, res) => {
     // ✅ Generate JWT token
     const token = jwt.sign(
       { userId: user._id, mobileNumber: user.mobileNumber },
-      process.env.JWT_SECRET, // Secret key from your .env file
-      { expiresIn: '1h' } // Token expiration time (optional)
+      process.env.JWT_SECRET
     );
 
     // ✅ Save Token in the User document (optional)
