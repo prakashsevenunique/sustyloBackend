@@ -150,6 +150,7 @@ exports.updateSalon = async (req, res) => {
     } catch (error) {
         console.error("🚨 Error updating salon:", error);
         res.status(500).json({ error: "Internal Server Error", details: error.message });
+
     }
 };
 

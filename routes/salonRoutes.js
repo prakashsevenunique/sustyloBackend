@@ -48,7 +48,6 @@ router.put(
     { name: "salonPhotos", maxCount: 5 },
     { name: "salonAgreement", maxCount: 1 },
   ]),
-  convertToJpg,
   updateSalon
 );
 

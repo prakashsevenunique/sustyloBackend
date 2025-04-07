@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
     if (file.fieldname === "salonPhotos" && file.mimetype.startsWith("image/")) {
         cb(null, true);
-    } else if (file.fieldname === "salonAgreement" && file.mimetype === "application/pdf") {
+    } else if (file.fieldname === "salonAgreement") {
         cb(null, true);
     } else if (file.fieldname === "blogImage" && file.mimetype.startsWith("image/")) { // 🔹 Added for blogs
         cb(null, true);
