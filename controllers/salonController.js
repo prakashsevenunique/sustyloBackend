@@ -126,6 +126,9 @@ exports.updateSalon = async (req, res) => {
         if (services) {
             try {
                 parsedServices = JSON.parse(services);
+                if (!Array.isArray(parsedServices)) {
+                    return res.status(400).json({ error: "Services should be a JSON array." });
+                }
             } catch (error) {
                 return res.status(400).json({ error: "Invalid services format. Send a valid JSON array." });
             }
@@ -212,7 +215,10 @@ exports.getAllSalons = async (req, res) => {
 
 exports.getNearbySalons = async (req, res) => {
     try {
-        const { latitude, longitude } = req.query;
+        const { latitude, longitude ,search} = req.query;
+
+        const searches = search || ''; // e.g., "gentel" or "haircut"
+        const status = "approve"; // show only approved salons
 
         if (!latitude || !longitude) {
             return res.status(400).json({ message: "Latitude and Longitude are required." });
@@ -221,7 +227,6 @@ exports.getNearbySalons = async (req, res) => {
         const lat = parseFloat(latitude);
         const lon = parseFloat(longitude);
 
-        console.log("🔍 Searching for salons at:", lat, lon);
 
         // Convert all stored lat/lng to numbers to avoid mismatches
         await Salon.updateMany({}, [
@@ -252,7 +257,11 @@ exports.getNearbySalons = async (req, res) => {
 
             const salons = await Salon.find({
                 latitude: { $exists: true, $ne: null },
-                longitude: { $exists: true, $ne: null }
+                longitude: { $exists: true, $ne: null },
+                status: status,
+                $or: [
+                    { 'services.category': { $regex: searches, $options: 'i' } },
+                ] // optional additional category filter
             }).lean();
 
             // Calculate distance for each salon
@@ -265,9 +274,7 @@ exports.getNearbySalons = async (req, res) => {
                 })
                 .filter(salon => salon.distance <= radius) // Filter salons within the radius
                 .sort((a, b) => a.distance - b.distance); // Sort by distance
-
             console.log(`Found ${filteredSalons.length} salons within ${radius} km`);
-
             return filteredSalons;
         };
 
@@ -317,55 +324,55 @@ exports.getTopReviewedSalons = async (req, res) => {
 // Haversine formula helper (if not using GeoJSON)
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     function deg2rad(deg) {
-      return deg * (Math.PI / 180);
+        return deg * (Math.PI / 180);
     }
     const R = 6371; // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(deg2rad(lat1)) *
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(deg2rad(lat1)) *
         Math.cos(deg2rad(lat2)) *
         Math.sin(dLon / 2) ** 2;
-  
+
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-  }
-  
-  exports.getNearbySalonsByService = async (req, res) => {
+}
+
+exports.getNearbySalonsByService = async (req, res) => {
     try {
-      const { latitude, longitude, service } = req.query;
-  
-      if (!latitude || !longitude || !service) {
-        return res.status(400).json({ message: "Latitude, longitude and service are required." });
-      }
-  
-      const allSalons = await Salon.find({ status: "approved" });
-  
-      const filteredSalons = allSalons
-        .filter((salon) =>
-          salon.services.some((s) =>
-            s.title.toLowerCase().includes(service.toLowerCase())
-          )
-        )
-        .map((salon) => {
-          const distance = getDistanceFromLatLonInKm(
-            parseFloat(latitude),
-            parseFloat(longitude),
-            salon.latitude,
-            salon.longitude
-          );
-          return { ...salon.toObject(), distance };
-        })
-        .filter((salon) => salon.distance <= 10) // 🔍 only salons within 10km
-        .sort((a, b) => a.distance - b.distance); // 📍 sort by closest
-  
-      res.status(200).json({ salons: filteredSalons });
+        const { latitude, longitude, service } = req.query;
+
+        if (!latitude || !longitude || !service) {
+            return res.status(400).json({ message: "Latitude, longitude and service are required." });
+        }
+
+        const allSalons = await Salon.find({ status: "approved" });
+
+        const filteredSalons = allSalons
+            .filter((salon) =>
+                salon.services.some((s) =>
+                    s.title.toLowerCase().includes(service.toLowerCase())
+                )
+            )
+            .map((salon) => {
+                const distance = getDistanceFromLatLonInKm(
+                    parseFloat(latitude),
+                    parseFloat(longitude),
+                    salon.latitude,
+                    salon.longitude
+                );
+                return { ...salon.toObject(), distance };
+            })
+            .filter((salon) => salon.distance <= 10) // 🔍 only salons within 10km
+            .sort((a, b) => a.distance - b.distance); // 📍 sort by closest
+
+        res.status(200).json({ salons: filteredSalons });
     } catch (error) {
-      console.error("Nearby Salon Error:", error);
-      res.status(500).json({ message: "Something went wrong", error: error.message });
+        console.error("Nearby Salon Error:", error);
+        res.status(500).json({ message: "Something went wrong", error: error.message });
     }
-  };
+};
 
 // ✅ Add Review to Salon
 exports.addReview = async (req, res) => {

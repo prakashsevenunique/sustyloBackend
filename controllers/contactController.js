@@ -12,9 +12,6 @@ const sendMail = async (contact) => {
     },
   });
 
-
-  
-
   const mailOptions = {
     from: process.env.EMAIL_USER, // Sender (Gmail)
     to: process.env.WEBSITE_EMAIL, // Receiver (info@7unique.in)

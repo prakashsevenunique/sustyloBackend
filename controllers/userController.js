@@ -166,7 +166,7 @@ exports.updateUserProfile = async (req, res) => {
       id,
       { name, email, gender },
       { new: true }
-  ).populate(Wallet);
+  ).populate("wallet");
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -186,9 +186,6 @@ exports.getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-  
- 
 
     return res.status(200).json({
       message: "User details fetched successfully",
