@@ -78,7 +78,7 @@
         const { userId } = req.params;
 
         // Correct field name: userId instead of user
-        const bookings = await Booking.find({ userId: userId }).populate('salonId');
+        const bookings = await Booking.find({ userId: userId }).populate('salonId', 'salonName salonAddress salonTitle salonPhotos');
         console.log("booking is : ", bookings);
         res.status(200).json({ bookings });
     } catch (error) {
