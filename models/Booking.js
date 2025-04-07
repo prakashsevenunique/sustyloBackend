@@ -10,9 +10,9 @@ const bookingSchema = new mongoose.Schema({
     // ✅ Updated: Services Array
     services: [
         {
-            title: { type: String, required: true },
+            name: { type: String, required: true },
             description: String,
-            rate: { type: Number, required: true },
+            price: { type: Number, required: true },
             duration: { type: String, required: true },
             discount: { type: Number, default: 0 },
             gender: { type: String, enum: ["male", "female", "unisex"], required: true },

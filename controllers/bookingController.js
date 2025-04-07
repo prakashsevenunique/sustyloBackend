@@ -28,8 +28,8 @@
 
         services.forEach(service => {
             const effectiveRate = service.discount
-                ? service.rate - (service.rate * service.discount) / 100
-                : service.rate;
+                ? service.price - (service.price * service.discount) / 100
+                : service.price;
 
             totalAmount += effectiveRate;
 
