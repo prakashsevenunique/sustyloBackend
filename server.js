@@ -40,9 +40,6 @@ app.use(cors('*'));
 app.use(helmet());
 app.use(morgan("dev"));
 
-
-
-
 // ✅ Routes
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
