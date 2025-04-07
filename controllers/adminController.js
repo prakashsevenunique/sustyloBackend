@@ -11,7 +11,7 @@ const Salon = require("../models/salon");
 exports.registerAdmin = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        
+
         // ✅ Check if an admin already exists
         let admin = await Admin.findOne();
         if (admin) {
@@ -36,7 +36,6 @@ exports.registerAdmin = async (req, res) => {
         const token = jwt.sign(
             { id: admin._id, role: admin.role },
             process.env.JWT_SECRET,
-            { expiresIn: "1d" }
         );
 
         res.status(201).json({
@@ -62,7 +61,12 @@ exports.loginAdmin = async (req, res) => {
         const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
-        res.json({ message: "Login successful", admin });
+        const token = jwt.sign(
+            { id: admin._id, role: admin.role },
+            process.env.JWT_SECRET,
+        );
+
+        res.json({ message: "Login successful", admin, token });
 
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
@@ -101,7 +105,7 @@ exports.updateSalon = async (req, res) => {
         if (updateData.mobile) {
             const existingSalon = await Salon.findOne({ mobile: updateData.mobile });
             if (existingSalon && existingSalon._id.toString() !== id) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     message: "This mobile number is already in use by another salon."
                 });
             }
@@ -187,22 +191,22 @@ exports.getAllUserPayoutReport = async (req, res) => {
 // ✅ Add Review for Salon
 exports.addReview = async (req, res) => {
     try {
-      const { salonId, rating, comment } = req.body;
-      const userId = req.user._id;
-  
-      const salon = await Salon.findById(salonId);
-      if (!salon) {
-        return res.status(404).json({ message: "Salon not found." });
-      }
-  
-      const newReview = { userId, rating, comment };
-      salon.reviews.push(newReview);
-      salon.calculateAverageRating();
-      
-      await salon.save();
-  
-      res.status(201).json({ message: "Review added successfully.", salon });
+        const { salonId, rating, comment } = req.body;
+        const userId = req.user._id;
+
+        const salon = await Salon.findById(salonId);
+        if (!salon) {
+            return res.status(404).json({ message: "Salon not found." });
+        }
+
+        const newReview = { userId, rating, comment };
+        salon.reviews.push(newReview);
+        salon.calculateAverageRating();
+
+        await salon.save();
+
+        res.status(201).json({ message: "Review added successfully.", salon });
     } catch (error) {
-      res.status(500).json({ message: "Internal Server Error", error: error.message });
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };

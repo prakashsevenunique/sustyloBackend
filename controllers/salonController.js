@@ -157,22 +157,22 @@ exports.updateSalon = async (req, res) => {
 exports.approveSalon = async (req, res) => {
     try {
         const { salonId } = req.params;
-
-        // ✅ Find salon
         let salon = await Salon.findById(salonId);
+
         if (!salon) return res.status(404).json({ message: "Salon not found" });
 
-        // ✅ Ensure all details are filled before approval
-        if (!salon.salonPhotos.length || !salon.salonAgreement || !salon.latitude || !salon.longitude) {
-            return res.status(400).json({ message: "Complete all required details before approval." });
-        }
+        // 🧹 Clean incomplete service entries to avoid validation error
+        salon.services = salon.services.filter(service =>
+            service.title && service.description && service.rate && service.duration && service.gender
+        );
 
-        // ✅ Update status to "approved"
+        // ✅ Approve salon
         salon.status = "approved";
         await salon.save();
 
-        res.status(200).json({ message: "Salon approved successfully and is now live.", salon });
+        res.status(200).json({ message: "Salon approved successfully", salon });
     } catch (error) {
+        console.error("❌ Error approving salon:", error);
         res.status(500).json({ message: "Error approving salon", error: error.message });
     }
 };
