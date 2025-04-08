@@ -90,7 +90,7 @@ exports.updateSalon = async (req, res) => {
 
         const {
             ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
-            socialLinks, openingHours, facilities, services, category
+            socialLinks, openingHours, facilities, services, category, bankDetails
         } = req.body;
 
        
@@ -140,7 +140,7 @@ exports.updateSalon = async (req, res) => {
             {
                 ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
                 socialLinks, openingHours, facilities, category, latitude, longitude,
-                salonPhotos, salonAgreement, services: parsedServices
+                salonPhotos, salonAgreement, services: parsedServices, bankDetails
             },
             { new: true }
         );
@@ -395,14 +395,32 @@ exports.addReview = async (req, res) => {
         const updatedSalon = await Salon.findByIdAndUpdate(
             salonId,
             { $push: { reviews: newReview } },
-            { new: true } 
-        ) 
+            { new: true }
+        );
 
         if (!updatedSalon) {
             return res.status(404).json({ message: "Salon not found." });
         }
 
-        res.status(201).json({ message: "Review added successfully.", salon: updatedSalon });
+        // 🔄 Calculate average rating using aggregation
+        const avgResult = await Salon.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
+            { $unwind: "$reviews" },
+            {
+                $group: {
+                    _id: "$_id",
+                    averageRating: { $avg: "$reviews.rating" },
+                },
+            },
+        ]);
+
+        const averageRating = avgResult.length > 0 ? avgResult[0].averageRating : 0;
+
+        res.status(201).json({
+            message: "Review added successfully.",
+            salon: updatedSalon,
+            averageRating: averageRating.toFixed(1),
+        });
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
