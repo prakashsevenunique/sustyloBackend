@@ -7,6 +7,7 @@ const OTP = require("../models/otpModel");
 const crypto = require("crypto");
 const referralService = require("../services/referralService");
 const { addReferralBonus } = require("../services/referralService");
+const Salon = require("../models/salon");
 
 // ✅ Send OTP
 exports.sendOtpController = async (req, res) => {
@@ -233,5 +234,35 @@ exports.getReferralCode = async (req, res) => {
   } catch (error) {
       console.error("Error fetching referral code:", error);
       res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getUserReviews = async (req, res) => {
+  try {
+      const { userId } = req.params;
+
+      // Find all salons where this user has submitted a review
+      const salons = await Salon.find({ "reviews.userId": userId })
+          .select("salonName reviews") // only get needed fields
+          .populate("reviews.userId", "name phone"); // optional
+
+      const userReviews = [];
+
+      salons.forEach(salon => {
+          salon.reviews.forEach(review => {
+              if (review.userId._id.toString() === userId) {
+                  userReviews.push({
+                      salonName: salon.salonName,
+                      rating: review.rating,
+                      comment: review.comment,
+                      date: review.createdAt
+                  });
+              }
+          });
+      });
+
+      res.status(200).json({ success: true, reviews: userReviews });
+  } catch (error) {
+      res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };

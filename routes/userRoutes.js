@@ -7,7 +7,8 @@ const {
   sendOtpController,
   verifyOTPController,
   getReferralCode,
-  getUserInfo
+  getUserInfo,
+  getUserReviews
 } = require("../controllers/userController"); // ✅ Ensure correct import path
 
 const { protect } = require("../authMiddleware/authMiddleware"); // ✅ Correct import
@@ -22,5 +23,6 @@ router.get("/get-all", getAllUsers);
 router.get("/get/:id", getUserById);
 router.get("/referral/:userId", getReferralCode);
 router.get("/user-info", protect, getUserInfo); // ✅ Fixed middleware usage
+router.get("/user-reviews/:userId", getUserReviews);
 
 module.exports = router;
