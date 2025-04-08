@@ -1,6 +1,6 @@
   const Booking = require('../models/Booking');
   const Salon = require('../models/salon');
-  const User = require('../models/User'); // Assuming you have a User model
+  const User = require('../models/User'); 
   const Wallet = require("../models/Wallet");
   const referralService = require("../services/referralService");
 
@@ -13,7 +13,7 @@
             return res.status(400).json({ error: "All fields and at least one service are required" });
         }
 
-        // ✅ Check if seat is already booked
+     
         const existingBooking = await Booking.findOne({
             salonId, date, timeSlot, seatNumber, status: "Confirmed"
         });
@@ -22,7 +22,7 @@
             return res.status(400).json({ error: "This seat is already booked for the selected time slot" });
         }
 
-        // ✅ Calculate total amount & duration
+        
         let totalAmount = 0;
         let totalMinutes = 0;
 
@@ -33,7 +33,7 @@
 
             totalAmount += effectiveRate;
 
-            // convert duration to minutes (assumes "45 min", "1 hr 30 min" format)
+         
             const matches = service.duration.match(/(\d+)\s*hr[s]?\s*(\d+)?\s*min[s]?|(\d+)\s*min[s]?/i);
             if (matches) {
                 if (matches[1]) {
@@ -48,7 +48,7 @@
         const minutes = totalMinutes % 60;
         const totalDuration = `${hours ? hours + ' hr ' : ''}${minutes} min`;
 
-        // ✅ Create booking
+        
         const booking = new Booking({
             salonId,
             userId,
@@ -72,12 +72,12 @@
     }
 };
 
-  // Get all bookings for a user
+ 
   exports.getUserBookings = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // Correct field name: userId instead of user
+        
         const bookings = await Booking.find({ userId: userId }).populate('salonId', 'salonName salonAddress salonTitle salonPhotos');
         console.log("booking is : ", bookings);
         res.status(200).json({ bookings });
@@ -87,7 +87,7 @@
 };
 
 
-  // Get all bookings for a salon
+ 
   exports.getSalonBookings = async (req, res) => {
       try {
           const { salonId } = req.params;
@@ -99,7 +99,7 @@
       }
   };
 
- // ✅ Confirm Booking After Payment
+
  exports.confirmBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -107,11 +107,11 @@
         const booking = await Booking.findById(bookingId);
         if (!booking) return res.status(404).json({ error: "Booking not found" });
 
-        // ✅ Update status after successful payment
+       
         booking.status = "Confirmed";
         booking.paymentStatus = "Paid";
 
-        // ✅ Add to history
+       
         booking.bookingHistory.push({ status: "Confirmed", changedAt: new Date() });
 
         await booking.save();
@@ -135,7 +135,7 @@ exports.cancelUnpaidBooking = async (req, res) => {
             booking.status = "Cancelled";
             booking.paymentStatus = "Failed";
 
-            // ✅ Add to booking history
+            
             booking.bookingHistory.push({ status: "Cancelled", changedAt: new Date() });
 
             await booking.save();
@@ -150,7 +150,7 @@ exports.cancelUnpaidBooking = async (req, res) => {
     }
 };
 
-  // ✅ Cancel Booking Manually
+ 
 exports.cancelBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -167,7 +167,7 @@ exports.cancelBooking = async (req, res) => {
     }
 };
 
-  // ✅ Mark Booking as Completed (Apply Referral Bonus)
+
   exports.completeBooking = async (req, res) => {
     try {
         const { bookingId } = req.params;
@@ -178,26 +178,26 @@ exports.cancelBooking = async (req, res) => {
         const user = await User.findById(booking.userId);
         if (!user) return res.status(404).json({ error: "User not found" });
 
-        // ✅ Check if it's user's first completed booking
+        
         const completedBookingsCount = await Booking.countDocuments({ userId: user._id, status: "Completed" });
 
         if (completedBookingsCount === 0 && user.referredBy) {
             const referrer = await User.findById(user.referredBy);
             if (referrer) {
-                // ✅ Ensure Wallet exists
+               
                 let referrerWallet = await Wallet.findOne({ userId: referrer._id });
                 if (!referrerWallet) {
                     referrerWallet = new Wallet({ userId: referrer._id, balance: 0 });
                 }
 
-                // ✅ Apply Referral Bonus
+               
                 referrerWallet.balance += 100;
                 await referrerWallet.save();
                 console.log("Referral bonus applied to referrer:", referrer._id);
             }
         }
 
-        // ✅ Mark Booking as Completed & Save History
+       
         booking.status = "Completed";
         booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
 

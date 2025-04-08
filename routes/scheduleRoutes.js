@@ -3,7 +3,7 @@ const { ScheduleAdd, getAvailableSlots } = require("../controllers/schedulecontr
 
 const router = express.Router();
 
-router.post("/add", ScheduleAdd); // ✅ Ensure this is present
+router.post("/add", ScheduleAdd);
 router.get("/schedule-get", getAvailableSlots);
 
 module.exports = router;

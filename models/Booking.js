@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema({
     timeSlot: { type: String, required: true },
     seatNumber: { type: Number, required: true },
 
-    // ✅ Updated: Services Array
+    
     services: [
         {
             name: { type: String, required: true },
@@ -19,14 +19,14 @@ const bookingSchema = new mongoose.Schema({
         }
     ],
 
-    // ✅ New fields
+   
     totalAmount: { type: Number, required: true },
     totalDuration: { type: String, required: true },
 
     status: { type: String, enum: ["Pending", "Confirmed", "Cancelled", "Completed"], default: "Pending" },
     paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
 
-    // ✅ Booking history tracking
+  
     bookingHistory: [
         {
             status: String,

@@ -1,5 +1,5 @@
 const { default: axios } = require("axios");
-// const User = require("../models/User");
+
 const PayOut = require("../models/payout");
 
 const mongoose = require("mongoose");
@@ -23,7 +23,7 @@ const payOut = async (req, res) => {
   }
 
   const newPayOut = new PayOut({
-    userId: new mongoose.Types.ObjectId(userId), // Ensuring the userID is a valid ObjectId
+    userId: new mongoose.Types.ObjectId(userId), 
     amount,
     reference,
     trans_mode,
@@ -35,7 +35,7 @@ const payOut = async (req, res) => {
     address,
   });
 
-  // Save the payout request to MongoDB
+  
   await newPayOut.save();
 
   return res.status(200).send({
@@ -78,7 +78,7 @@ const adminAction = async (req, res) => {
       mobile,
       address
     );
-    // After approval, call the external payout service
+    
     try {
       const payOutData = await axios.post(
         "https://api.worldpayme.com/api/v1.1/payoutTransaction",
@@ -113,7 +113,7 @@ const adminAction = async (req, res) => {
     }
   } else {
     payout.adminAction = "Rejected";
-    payout.status = "Failed"; // Mark as failed if rejected
+    payout.status = "Failed";
     await payout.save();
     return res.status(400).mm.send("Payout Request rejected by admin");
   }
@@ -141,7 +141,7 @@ const callbackPayout = async (req, res) => {
       return res.status(200).json({ message: "PayOut successful", payout });
     }
 
-    // Handle Failed Transaction
+   
     payout.status = "Failed";
     await payout.save();
 
@@ -154,15 +154,15 @@ const callbackPayout = async (req, res) => {
 
 const payOutReportAllUsers = async (req, res) => {
   try {
-    const { userId, startDate, endDate, status } = req.query; // Query Parameters for Filtering
+    const { userId, startDate, endDate, status } = req.query; 
 
     let filter = {};
 
     if (userId) {
-      filter.userId = new mongoose.Types.ObjectId(userId); // Agar kisi ek user ka dekhna ho
+      filter.userId = new mongoose.Types.ObjectId(userId); 
     }
     if (status) {
-      filter.status = status; // Success, Failed, Pending
+      filter.status = status;
     }
     if (startDate && endDate) {
       filter.createdAt = {
@@ -171,12 +171,12 @@ const payOutReportAllUsers = async (req, res) => {
       };
     }
 
-    // Aggregation Pipeline
+    
     const payouts = await PayOut.aggregate([
-      { $match: filter }, // Filters Apply
+      { $match: filter }, 
       {
         $lookup: {
-          from: "users", // Join Users Collection
+          from: "users",
           localField: "userId",
           foreignField: "_id",
           as: "userDetails",
@@ -198,7 +198,7 @@ const payOutReportAllUsers = async (req, res) => {
           createdAt: 1,
         },
       },
-      { $sort: { createdAt: -1 } }, // Latest Payout First
+      { $sort: { createdAt: -1 } },
     ]);
 
     return res.status(200).json({ success: true, data: payouts });

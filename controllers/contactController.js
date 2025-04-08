@@ -2,19 +2,19 @@ const Contact = require("../models/Contact");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-// Function to send email
+
 const sendMail = async (contact) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.EMAIL_USER, // Your Gmail (Sender)
-      pass: process.env.EMAIL_PASS, // App Password
+      user: process.env.EMAIL_USER, 
+      pass: process.env.EMAIL_PASS, 
     },
   });
 
   const mailOptions = {
-    from: process.env.EMAIL_USER, // Sender (Gmail)
-    to: process.env.WEBSITE_EMAIL, // Receiver (info@7unique.in)
+    from: process.env.EMAIL_USER, 
+    to: process.env.WEBSITE_EMAIL,
     subject: "New Contact Form Submission",
     text: `Name: ${contact.fullName}\nEmail: ${contact.email}\nMobile: ${contact.mobile}\nMessage: ${contact.message}`,
   };
@@ -23,7 +23,7 @@ const sendMail = async (contact) => {
 };
 
 
-// Contact Form Handler
+
 exports.createContact = async (req, res) => {
   try {
     const { fullName, email, mobile, message } = req.body;
@@ -34,7 +34,7 @@ exports.createContact = async (req, res) => {
     const newContact = new Contact({ fullName, email, mobile, message });
     await newContact.save();
 
-    // Send email
+    
     await sendMail(newContact);
 
     res.status(201).json({ message: "Contact message sent successfully!" });

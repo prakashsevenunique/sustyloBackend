@@ -25,7 +25,7 @@ exports.allUserWalletreport = async (req, res) => {
 
 exports.userWalletreport = async (req, res) => {
     try {
-        // Step 1: Get the user identifier (e.g., from the request params or body)
+     
         const userId = req.params.userId ;
   
         if (!userId) {
@@ -37,7 +37,7 @@ exports.userWalletreport = async (req, res) => {
         
         const data = await userWallet(userId);
 
-        // Step 2: Aggregate total pay-in amount for the specific user (Only Approved Transactions)
+        
         return res.status(200).json({
             success: true,
             data: data

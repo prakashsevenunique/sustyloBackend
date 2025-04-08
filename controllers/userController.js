@@ -9,7 +9,7 @@ const referralService = require("../services/referralService");
 const { addReferralBonus } = require("../services/referralService");
 const Salon = require("../models/salon");
 
-// ✅ Send OTP
+
 exports.sendOtpController = async (req, res) => {
   try {
     const { mobileNumber } = req.body;
@@ -17,7 +17,7 @@ exports.sendOtpController = async (req, res) => {
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
-    // ✅ Generate and Send OTP
+   
     const otp = await generateOtp(mobileNumber);
     const smsResult = await sendOtp(mobileNumber, otp);
 
@@ -30,7 +30,7 @@ exports.sendOtpController = async (req, res) => {
   }
 };
 
-// OTP Verify & User Login API
+
 const generateReferralCode = () => crypto.randomBytes(4).toString("hex").toUpperCase();
 
 exports.verifyOTPController = async (req, res) => {
@@ -40,7 +40,7 @@ exports.verifyOTPController = async (req, res) => {
       return res.status(400).json({ message: "Mobile number and OTP are required" });
     }
 
-    // ✅ Verify OTP
+  
     const verificationResult = await verifyOtp(mobileNumber, otp);
     if (!verificationResult.success) {
       return res.status(400).json({ message: verificationResult.message });
@@ -51,7 +51,7 @@ exports.verifyOTPController = async (req, res) => {
     if (!user) {
       let referredByUser = null;
 
-      // ✅ Validate Referral Code
+      
       if (referralCode) {
         referredByUser = await User.findOne({ referralCode });
         if (!referredByUser) {
@@ -59,10 +59,10 @@ exports.verifyOTPController = async (req, res) => {
         }
       }
 
-      // ✅ Generate Unique Referral Code for New User
+     
       const newReferralCode = `SALON${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // ✅ Create New User
+     
       user = new User({
         mobileNumber,
         role: "user",
@@ -72,31 +72,31 @@ exports.verifyOTPController = async (req, res) => {
 
       await user.save();
 
-      // ✅ Create Wallet & Add ₹100 Bonus
+     
       const wallet = new Wallet({
         user: user._id,
-        balance: 100, // 🎉 Add ₹100 to wallet on signup
+        balance: 100,
       });
 
       await wallet.save();
 
-      // ✅ Update User Wallet Reference
+     
       user.wallet = wallet._id;
       await user.save();
 
-      // ✅ Reward Referral Bonus if applicable
+     
       if (referredByUser) {
         await addReferralBonus(referredByUser._id, user._id);
       }
     }
 
-    // ✅ Generate JWT token
+   
     const token = jwt.sign(
       { userId: user._id, mobileNumber: user.mobileNumber },
       process.env.JWT_SECRET
     );
 
-    // ✅ Save Token in the User document (optional)
+    
     user.token = token;
     await user.save();
 
@@ -104,7 +104,7 @@ exports.verifyOTPController = async (req, res) => {
       message: "OTP verified successfully",
       user,
       wallet: await Wallet.findOne({ user: user._id }),
-      token, // Send the token back to the client
+      token,
     });
   } catch (error) {
     console.error("Error in verifyOTPController:", error);
@@ -112,7 +112,7 @@ exports.verifyOTPController = async (req, res) => {
   }
 };  
 
-// ✅ Update User Location (Every login)
+
 exports.updateLocation = async (req, res) => {
   try {
     console.log("Received request body:", req.body);
@@ -131,7 +131,7 @@ exports.updateLocation = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Check if location is actually different
+    
     if (
       user.location &&
       user.location.latitude === latitude &&
@@ -141,7 +141,7 @@ exports.updateLocation = async (req, res) => {
       return res.json({ message: "Location is already up to date", location: user.location });
     }
 
-    // Update location only if it's different
+    
     user.location = { latitude, longitude };
     await user.save();
 
@@ -152,7 +152,7 @@ exports.updateLocation = async (req, res) => {
   }
 };
 
-// ✅ Update User Profile
+
 exports.updateUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -179,9 +179,9 @@ exports.updateUserProfile = async (req, res) => {
 
 exports.getUserInfo = async (req, res) => {
   try {
-    const userId = req.user.userId; // Extracted from token
+    const userId = req.user.userId;
 
-    // Find user details
+   
     const user = await User.findById(userId).select("-password").populate('wallet', "balance");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -197,7 +197,7 @@ exports.getUserInfo = async (req, res) => {
   }
 };
 
-// ✅ Get All Users
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().populate("wallet");
@@ -208,7 +208,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// ✅ Get User by ID
+
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,10 +241,10 @@ exports.getUserReviews = async (req, res) => {
   try {
       const { userId } = req.params;
 
-      // Find all salons where this user has submitted a review
+      
       const salons = await Salon.find({ "reviews.userId": userId })
-          .select("salonName reviews") // only get needed fields
-          .populate("reviews.userId", "name phone"); // optional
+          .select("salonName reviews")
+          .populate("reviews.userId", "name phone"); 
 
       const userReviews = [];
 

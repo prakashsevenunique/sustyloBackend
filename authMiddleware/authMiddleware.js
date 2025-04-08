@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-// ✅ Middleware to Protect Routes
+
 const protect = (req, res, next) => {
     try {
         const token = req.headers.authorization;
@@ -15,7 +15,7 @@ const protect = (req, res, next) => {
     }
 };
 
-// ✅ Role-Based Authorization Middleware
+
 const authorizeRoles = (...roles) => {
     return (req, res, next) => {
         if (!req.user || !roles.includes(req.user.role)) {
@@ -25,7 +25,7 @@ const authorizeRoles = (...roles) => {
     };
 };
 
-// ✅ Super Admin Authorization Middleware
+
 const authorizeSuperAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden: Only super admins can perform this action" });

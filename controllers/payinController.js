@@ -30,7 +30,7 @@ const payIn = async (req, res) => {
   console.log(payInData.data);
   if (payInData.data) {
     const newPayIn = new PayIn({
-      userId: new mongoose.Types.ObjectId(userId), // Ensuring the userID is a valid ObjectId
+      userId: new mongoose.Types.ObjectId(userId), 
       amount,
       reference,
       name,
@@ -38,7 +38,7 @@ const payIn = async (req, res) => {
       email
     });
 
-    // Save the record to MongoDB
+   
     await newPayIn.save();
     return res
       .status(200)
@@ -64,24 +64,17 @@ const callbackPayIn = async (req, res) => {
 
     if (data.status === "Success") {
      
-      // Update PayIn Transaction
+     
       payin.status = "Approved";
       payin.utr = data.utr;
       await payin.save();
 
-      // // Log Transaction History
-      // await Transaction.create({
-      //   userId: retailer._id,
-      //   type: "PayIn",
-      //   amount: payin.amount,
-      //   status: "Success",
-      //   reference: data.reference
-      // });
+     
 
       return res.status(200).json({ message: "PayIn successful", payin });
     }
 
-    // Handle Failed Transaction
+   
     payin.status = "Failed";
     await payin.save();
 
@@ -103,7 +96,7 @@ const getPayInRes = async (req, res) =>{
 
 const payInReportAllUsers = async (req, res) => {
   try {
-    const { userId, startDate, endDate, status, paymentGateway } = req.query; // Query Parameters
+    const { userId, startDate, endDate, status, paymentGateway } = req.query; 
 
     let filter = {};
 
@@ -111,10 +104,10 @@ const payInReportAllUsers = async (req, res) => {
       filter.userId = new mongoose.Types.ObjectId(userId);
     }
     if (status) {
-      filter.status = status; // Pending, Approved, Failed
+      filter.status = status;
     }
     if (paymentGateway) {
-      filter.paymentGateway = paymentGateway; // Razorpay, Paytm, etc.
+      filter.paymentGateway = paymentGateway; 
     }
     if (startDate && endDate) {
       filter.createdAt = {
@@ -123,7 +116,7 @@ const payInReportAllUsers = async (req, res) => {
       };
     }
 
-    // Aggregation Pipeline
+    
     const payIns = await PayIn.aggregate([
       { $match: filter },
       {

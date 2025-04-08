@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// ✅ Subdocument for user reviews
+
 const ReviewSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     rating: { type: Number, required: true, min: 0, max: 5 },
@@ -8,7 +8,7 @@ const ReviewSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
 });
 
-// ✅ Main Salon Schema
+
 const SalonSchema = new mongoose.Schema(
     {
         ownerName: { type: String, required: true },
@@ -18,19 +18,19 @@ const SalonSchema = new mongoose.Schema(
         salonAddress: { type: String, required: true },
         locationMapUrl: { type: String },
 
-        // ✅ New Fields
+       
         salonTitle: { type: String, default: "" },
         salonDescription: { type: String, default: "" },
 
-        // ✅ Location Fields
+      
         latitude: { type: Number, default: null },
         longitude: { type: Number, default: null },
 
-        // ✅ File Uploads
-        salonPhotos: [{ type: String }], // ✅ Array to store multiple image URLs
-        salonAgreement: { type: String, default: "" }, // ✅ PDF file path
+      
+        salonPhotos: [{ type: String }],
+        salonAgreement: { type: String, default: "" }, 
 
-        // ✅ Other Fields
+       
         socialLinks: {
             facebook: { type: String, default: "" },
             instagram: { type: String, default: "" },
@@ -59,5 +59,5 @@ const SalonSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// ✅ Export model
+
 module.exports = mongoose.model("Salon", SalonSchema);

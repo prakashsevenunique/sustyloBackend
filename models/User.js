@@ -12,8 +12,8 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
-  referralCode: { type: String, unique: true }, // ✅ Referral Code Field
-  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // ✅ Referrer User Reference
+  referralCode: { type: String, unique: true }, 
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 
 module.exports = mongoose.model("User", userSchema);

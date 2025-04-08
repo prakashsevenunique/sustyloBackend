@@ -8,8 +8,8 @@ const ScheduleSchema = new mongoose.Schema(
     weeklySchedule: [
       {
         day: { type: String, required: true, enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
-        timeSlots: [{ type: String, required: true }], // ["10:00 AM - 11:00 AM", "11:00 AM - 12:00 PM"]
-        totalSeats: { type: Number, required: true } // Total number of seats available
+        timeSlots: [{ type: String, required: true }], 
+        totalSeats: { type: Number, required: true }
       }
     ]
   },

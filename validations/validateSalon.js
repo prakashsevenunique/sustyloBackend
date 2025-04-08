@@ -45,7 +45,7 @@ const validateSalon = (data) => {
     images: Joi.array().items(Joi.string()).optional(),
   });
 
-  return schema.validate(data, { abortEarly: false }); // Return all validation errors
+  return schema.validate(data, { abortEarly: false });
 };
 
 module.exports = validateSalon;

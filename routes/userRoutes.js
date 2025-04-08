@@ -22,7 +22,7 @@ router.put("/update-profile/:id", updateUserProfile);
 router.get("/get-all", getAllUsers);
 router.get("/get/:id", getUserById);
 router.get("/referral/:userId", getReferralCode);
-router.get("/user-info", protect, getUserInfo); // ✅ Fixed middleware usage
+router.get("/user-info", protect, getUserInfo); 
 router.get("/user-reviews/:userId", getUserReviews);
 
 module.exports = router;

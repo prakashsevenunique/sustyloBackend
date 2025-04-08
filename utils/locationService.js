@@ -1,6 +1,6 @@
-const User = require("../models/User"); // Ensure this model exists
+const User = require("../models/User"); 
 
-// Update user location
+
 const updateUserLocation = async (userId, latitude, longitude) => {
     try {
         await User.findByIdAndUpdate(userId, { location: { latitude, longitude } });

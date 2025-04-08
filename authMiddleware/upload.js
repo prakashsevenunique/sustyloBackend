@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
 
-// ✅ Ensure Upload Folders Exist
+
 const createFolder = (folder) => {
     if (!fs.existsSync(folder)) {
         fs.mkdirSync(folder, { recursive: true });
@@ -11,9 +11,9 @@ const createFolder = (folder) => {
 };
 createFolder("uploads/salonPhotos");
 createFolder("uploads/salonAgreements");
-createFolder("uploads/blogs"); // 🔹 Added for blog image uploads
+createFolder("uploads/blogs");
 
-// ✅ Multer Storage Configuration
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         console.log("📂 Saving File:", file.originalname, "Type:", file.mimetype);
@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
             cb(null, "uploads/salonPhotos/");
         } else if (file.fieldname === "salonAgreement") {
             cb(null, "uploads/salonAgreements/");
-        } else if (file.fieldname === "blogImage") {  // 🔹 Added for blog images
+        } else if (file.fieldname === "blogImage") { 
             cb(null, "uploads/blogs/");
         } else {
             cb(new Error("❌ Invalid file field: " + file.fieldname), null);
@@ -29,11 +29,11 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique filename
+        cb(null, uniqueSuffix + path.extname(file.originalname));
     }
 });
 
-// ✅ File Filter (Allow Only Images & PDFs)
+
 const fileFilter = (req, file, cb) => {
     if (file.fieldname === "salonPhotos" && file.mimetype.startsWith("image/")) {
         cb(null, true);
@@ -46,14 +46,14 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-// ✅ Multer Upload Middleware
+
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 }, // Max file size 10MB
+    limits: { fileSize: 10 * 1024 * 1024 }, 
 });
 
-// ✅ Convert Uploaded Images to JPG (Compression)
+
 const convertToJpg = async (req, res, next) => {
     if (!req.files) return next();
 

@@ -9,31 +9,31 @@ const userWallet = async (userId) => {
         const mongoose = require('mongoose');
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        // Step 1: Approved PayIn Transactions
+       
         const payInData = await PayIn.aggregate([
             { $match: { status: "Approved", userId: userObjectId } },
             { $group: { _id: "$userId", totalPayIn: { $sum: "$amount" } } }
         ]);
 
-        // Step 2: Approved PayOut Transactions
+      
         const payOutData = await PayOut.aggregate([
             { $match: { status: "Approved", userId: userObjectId } },
             { $group: { _id: "$userId", totalPayOut: { $sum: "$amount" } } }
         ]);
 
-        // Step 3: Failed & Pending PayIn Transactions
+       
         const failedPendingPayIn = await PayIn.aggregate([
             { $match: { status: { $in: ["Pending", "Failed"] }, userId: userObjectId } },
             { $group: { _id: "$userId", totalFailedPendingPayIn: { $sum: "$amount" } } }
         ]);
 
-        // Step 4: Failed & Pending PayOut Transactions
+      
         const failedPendingPayOut = await PayOut.aggregate([
             { $match: { status: { $in: ["Pending", "Failed"] }, userId: userObjectId } },
             { $group: { _id: "$userId", totalFailedPendingPayOut: { $sum: "$amount" } } }
         ]);
 
-        // Converting results into maps for lookup
+       
         const payInMap = {};
         payInData.forEach(item => payInMap[item._id.toString()] = item.totalPayIn || 0);
 
@@ -46,18 +46,18 @@ const userWallet = async (userId) => {
         const failedPendingPayOutMap = {};
         failedPendingPayOut.forEach(item => failedPendingPayOutMap[item._id.toString()] = item.totalFailedPendingPayOut || 0);
 
-        // Fetch user details
+       
         const user = await User.findById(userObjectId);
         if (!user) throw new Error("User not found.");
 
-        // Calculating balances
+        
         const totalPayIn = payInMap[user._id.toString()] || 0;
         const totalPayOut = payOutMap[user._id.toString()] || 0;
         const failedPendingPayInTotal = failedPendingPayInMap[user._id.toString()] || 0;
         const failedPendingPayOutTotal = failedPendingPayOutMap[user._id.toString()] || 0;
         const availableBalance = totalPayIn - totalPayOut;
 
-        // Preparing response data
+       
         const data = {
             _id: user._id,
             name: user.name,
@@ -84,7 +84,7 @@ const userWallet = async (userId) => {
 
 const allUserWallet = async() => {
  try {
-      // Step 1: Aggregate total pay-in amount per user (Only Approved Transactions)
+      
       const payInData = await PayIn.aggregate([
           { $match: { status: "Approved" } },
           { 
@@ -95,7 +95,7 @@ const allUserWallet = async() => {
           }
       ]);
 
-      // Step 2: Aggregate total pay-out amount per user (Only Approved Transactions)
+     
       const payOutData = await PayOut.aggregate([
           { $match: { status: "Approved" } },
           { 
@@ -106,7 +106,7 @@ const allUserWallet = async() => {
           }
       ]);
 
-      // Step 3: Convert aggregation results into maps for quick lookup
+    
       const payInMap = {};
       payInData.forEach(item => {
           payInMap[item._id.toString()] = item.totalPayIn;
@@ -117,10 +117,9 @@ const allUserWallet = async() => {
           payOutMap[item._id.toString()] = item.totalPayOut;
       });
 
-      // Step 4: Fetch all users
+     
       const users = await User.find({}, "name email mobileNumber role");
-    //   const users = await User.findOne({email});
-      // Step 5: Attach total pay-in, total pay-out, and available balance
+  
       const finalData = users.map(user => {
           const totalPayIn = payInMap[user._id.toString()] || 0;
           const totalPayOut = payOutMap[user._id.toString()] || 0;

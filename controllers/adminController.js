@@ -3,25 +3,25 @@ const bcrypt = require("bcryptjs");
 const Admin = require("../models/admin");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
-const Payin = require("../models/payin");  // ✅ Corrected Import
-const Payout = require("../models/payout"); // ✅ Corrected Import
+const Payin = require("../models/payin");  
+const Payout = require("../models/payout"); 
 const Salon = require("../models/salon");
 
-// ✅ Register Admin & Generate Token
+
 exports.registerAdmin = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        // ✅ Check if an admin already exists
+        
         let admin = await Admin.findOne();
         if (admin) {
             return res.status(400).json({ message: "Admin already registered. Please log in." });
         }
 
-        // ✅ Hash Password
+        
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ✅ Save First Admin in Database
+        
         admin = new Admin({
             name,
             email,
@@ -32,7 +32,7 @@ exports.registerAdmin = async (req, res) => {
 
         await admin.save();
 
-        // ✅ Generate Token After Registration
+        
         const token = jwt.sign(
             { id: admin._id, role: admin.role },
             process.env.JWT_SECRET,
@@ -49,7 +49,7 @@ exports.registerAdmin = async (req, res) => {
     }
 };
 
-// ✅ Admin Login
+
 exports.loginAdmin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -73,7 +73,7 @@ exports.loginAdmin = async (req, res) => {
     }
 };
 
-// ✅ Fetch All Users
+
 exports.getAllUsers = async (req, res) => {
     try {
         const users = await User.find({ role: "user" }).select("-password");
@@ -83,7 +83,7 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// ✅ Fetch All Shop Owners
+
 exports.getAllShopOwners = async (req, res) => {
     try {
         const owners = await User.find({ role: "shopOwner" }).select("-password");
@@ -93,7 +93,7 @@ exports.getAllShopOwners = async (req, res) => {
     }
 };
 
-// ✅ Update Shop Owner Details
+
 exports.updateSalon = async (req, res) => {
     try {
         const { id } = req.params;
@@ -126,7 +126,7 @@ exports.updateSalon = async (req, res) => {
     }
 };
 
-// ✅ Fetch Pending Salon Requests
+
 exports.getPendingSalonRequests = async (req, res) => {
     try {
         const salons = await Salon.find({ status: "pending" });
@@ -136,7 +136,7 @@ exports.getPendingSalonRequests = async (req, res) => {
     }
 };
 
-// ✅ Fetch All Wallets
+
 exports.getAllShopWallets = async (req, res) => {
     try {
         const wallets = await Wallet.find().populate("user", "name email phone");
@@ -146,7 +146,7 @@ exports.getAllShopWallets = async (req, res) => {
     }
 };
 
-// ✅ Fetch Pay-in Report for Shop Owner
+
 exports.getShopOwnerPayInReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
@@ -157,7 +157,7 @@ exports.getShopOwnerPayInReport = async (req, res) => {
     }
 };
 
-// ✅ Fetch Payout Report for Shop Owner
+
 exports.getShopOwnerPayoutReport = async (req, res) => {
     try {
         const { ownerId } = req.params;
@@ -168,7 +168,7 @@ exports.getShopOwnerPayoutReport = async (req, res) => {
     }
 };
 
-// ✅ Fetch Pay-in Report for All Users
+
 exports.getAllUserPayInReport = async (req, res) => {
     try {
         const payments = await Payin.find().populate("user", "name email phone");
@@ -178,7 +178,7 @@ exports.getAllUserPayInReport = async (req, res) => {
     }
 };
 
-// ✅ Fetch Payout Report for All Users
+
 exports.getAllUserPayoutReport = async (req, res) => {
     try {
         const payouts = await Payout.find().populate("user", "name email phone");
@@ -188,7 +188,7 @@ exports.getAllUserPayoutReport = async (req, res) => {
     }
 };
 
-// ✅ Add Review for Salon
+
 exports.addReview = async (req, res) => {
     try {
         const { salonId, rating, comment } = req.body;

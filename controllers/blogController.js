@@ -3,24 +3,24 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// ✅ Ensure Upload Folder Exists
+
 const uploadFolder = "uploads/blogs";
 if (!fs.existsSync(uploadFolder)) {
     fs.mkdirSync(uploadFolder, { recursive: true });
 }
 
-// ✅ Multer Storage Configuration
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadFolder);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique filename
+        cb(null, uniqueSuffix + path.extname(file.originalname)); 
     },
 });
 
-// ✅ Multer Upload Middleware (Only Images)
+
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
@@ -30,9 +30,9 @@ const upload = multer({
             cb(new Error("Only images are allowed"), false);
         }
     },
-}).single("blogImage"); // Accept only one file
+}).single("blogImage");
 
-// ✅ 1️⃣ Upload Blog
+
 exports.uploadBlog = (req, res) => {
     upload(req, res, async (err) => {
         if (err) {
@@ -60,10 +60,10 @@ exports.uploadBlog = (req, res) => {
     });
 };
 
-// ✅ 2️⃣ Get All Blogs
+
 exports.getAllBlogs = async (req, res) => {
     try {
-        const blogs = await Blog.find().sort({ createdAt: -1 }); // Latest blogs first
+        const blogs = await Blog.find().sort({ createdAt: -1 });
         return res.status(200).json(blogs);
     } catch (error) {
         console.error("Error fetching blogs:", error);
@@ -71,7 +71,7 @@ exports.getAllBlogs = async (req, res) => {
     }
 };
 
-// ✅ 3️⃣ Get Single Blog by ID
+
 exports.getBlogById = async (req, res) => {
     try {
         const blogId = req.params.id;
@@ -86,7 +86,7 @@ exports.getBlogById = async (req, res) => {
     }
 };
 
-// ✅ 4️⃣ Update Blog
+
 exports.updateBlog = async (req, res) => {
     upload(req, res, async (err) => {
         if (err) {
@@ -125,7 +125,7 @@ exports.updateBlog = async (req, res) => {
     });
 };
 
-// ✅ 5️⃣ Delete Blog
+
 exports.deleteBlog = async (req, res) => {
     try {
         const blogId = req.params.id;
@@ -135,7 +135,7 @@ exports.deleteBlog = async (req, res) => {
             return res.status(404).json({ message: "Blog not found" });
         }
 
-        // Delete the associated image
+      
         if (blog.imageUrl) {
             const imagePath = path.join(__dirname, "..", blog.imageUrl);
             if (fs.existsSync(imagePath)) {

@@ -2,7 +2,7 @@ const Salon = require("../models/salon");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
-// ✅ Register Salon and lead (With File Uploads)
+
 exports.SalonLead = async (req, res) => {
     try {
         console.log("🚀 Incoming Request for Salon Registration");
@@ -10,25 +10,25 @@ exports.SalonLead = async (req, res) => {
 
         const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
-        // ✅ Ensure all required fields are provided
+        
         if (!ownerName || !salonName || !mobile || !email || !salonAddress) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
-        // ✅ Check if the salon already exists by mobile number
+       
         const existingSalon = await Salon.findOne({ mobile });
         if (existingSalon) {
             return res.status(400).json({ message: "Salon with this mobile number already exists." });
         }
 
-        // ✅ Create new salon with "pending" status
+     
         const newSalon = new Salon({
             ownerName,
             salonName,
             mobile,
             email,
             salonAddress,
-            status: "pending" // ✅ Status set to pending until full details are updated
+            status: "pending"
         });
 
         await newSalon.save();
@@ -43,7 +43,7 @@ exports.SalonLead = async (req, res) => {
     }
 };
 
-// ✅ Get Salon by ID
+
 exports.getSalonById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -57,7 +57,7 @@ exports.getSalonById = async (req, res) => {
     }
 };
 
-// ✅ Function to extract latitude & longitude from Google Maps URL
+
 const extractLatLng = (mapUrl) => {
     const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const match = mapUrl.match(regex);
@@ -67,18 +67,18 @@ const extractLatLng = (mapUrl) => {
     return { latitude: null, longitude: null };
 };
 
-// ✅ Update Salon API (Har Detail Update Karega)
+
 exports.updateSalon = async (req, res) => {
     try {
         const { salonId } = req.params;
         console.log("📌 Update Salon API hit with Salon ID:", salonId);
 
-        // ✅ Validate Salon ID
+      
         if (!mongoose.Types.ObjectId.isValid(salonId)) {
             return res.status(400).json({ error: "Invalid Salon ID" });
         }
 
-        // ✅ Find existing salon
+        
         let salon = await Salon.findById(salonId);
         if (!salon) {
             console.error("🚨 Salon not found:", salonId);
@@ -93,7 +93,7 @@ exports.updateSalon = async (req, res) => {
             socialLinks, openingHours, facilities, services, category
         } = req.body;
 
-        // ✅ Check if the new email is already in use by another salon
+       
         if (email && email !== salon.email) {
             const existingSalon = await Salon.findOne({ email });
             if (existingSalon) {
@@ -101,7 +101,7 @@ exports.updateSalon = async (req, res) => {
             }
         }
 
-        // ✅ Extract latitude & longitude from Map URL
+      
         let { latitude, longitude } = salon;
         if (locationMapUrl) {
             const coords = extractLatLng(locationMapUrl);
@@ -109,7 +109,7 @@ exports.updateSalon = async (req, res) => {
             longitude = coords.longitude;
         }
 
-        // ✅ Handle file uploads
+        
         let salonPhotos = salon.salonPhotos || [];
         let salonAgreement = salon.salonAgreement || "";
 
@@ -121,7 +121,7 @@ exports.updateSalon = async (req, res) => {
             salonAgreement = req.files["salonAgreement"][0].path;
         }
 
-        // ✅ Convert services to array
+       
         let parsedServices = [];
         if (services) {
             try {
@@ -134,7 +134,7 @@ exports.updateSalon = async (req, res) => {
             }
         }
 
-        // ✅ Update salon details
+      
         salon = await Salon.findByIdAndUpdate(
             salonId,
             {
@@ -161,12 +161,12 @@ exports.approveSalon = async (req, res) => {
 
         if (!salon) return res.status(404).json({ message: "Salon not found" });
 
-        // 🧹 Clean incomplete service entries to avoid validation error
+       
         salon.services = salon.services.filter(service =>
             service.title && service.description && service.rate && service.duration && service.gender
         );
 
-        // ✅ Approve salon
+       
         salon.status = "approved";
         await salon.save();
 
@@ -191,7 +191,7 @@ exports.updateShopOwner = async (req, res) => {
         res.status(500).json({ success: false, message: "Error updating shop owner", error: error.message });
     }
 };
-// ✅ Get All Salons (With Status Filter)
+
 exports.getAllSalons = async (req, res) => {
     try {
         const { status } = req.query;
@@ -212,7 +212,7 @@ exports.getAllSalons = async (req, res) => {
     }
 };
 
-// ✅ Get Nearby Salons Based on User Location
+
 
 exports.getNearbySalons = async (req, res) => {
     try {
@@ -300,12 +300,12 @@ exports.getTopReviewedSalons = async (req, res) => {
     try {
         console.log("🔍 Searching for top 5 reviewed salons...");
 
-        // Find top 5 salons sorted by review count in descending order
+      
         const salons = await Salon.find({
-            reviews: { $exists: true, $ne: null } // Ensure reviews exist
+            reviews: { $exists: true, $ne: null } 
         })
-            .sort({ "reviews.length": -1 }) // Sort by review count (highest first)
-            .limit(5) // Only get the top 5 salons
+            .sort({ "reviews.length": -1 })
+            .limit(5) 
             .lean();
 
         console.log(`🟢 Found ${salons.length} top reviewed salons`);
@@ -322,12 +322,12 @@ exports.getTopReviewedSalons = async (req, res) => {
     }
 };
 
-// Haversine formula helper (if not using GeoJSON)
+
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     function deg2rad(deg) {
         return deg * (Math.PI / 180);
     }
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; 
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
@@ -365,8 +365,8 @@ exports.getNearbySalonsByService = async (req, res) => {
                 );
                 return { ...salon.toObject(), distance };
             })
-            .filter((salon) => salon.distance <= 10) // 🔍 only salons within 10km
-            .sort((a, b) => a.distance - b.distance); // 📍 sort by closest
+            .filter((salon) => salon.distance <= 10) 
+            .sort((a, b) => a.distance - b.distance);
 
         res.status(200).json({ salons: filteredSalons });
     } catch (error) {
@@ -375,7 +375,7 @@ exports.getNearbySalonsByService = async (req, res) => {
     }
 };
 
-// ✅ Add Review to Salon
+
 exports.addReview = async (req, res) => {
     try {
         const { salonId } = req.params;
@@ -395,8 +395,8 @@ exports.addReview = async (req, res) => {
         const updatedSalon = await Salon.findByIdAndUpdate(
             salonId,
             { $push: { reviews: newReview } },
-            { new: true } // returns updated salon
-        ) // optional: populate for return
+            { new: true } 
+        ) 
 
         if (!updatedSalon) {
             return res.status(404).json({ message: "Salon not found." });
@@ -416,7 +416,7 @@ exports.getReviews = async (req, res) => {
 
         const salon = await Salon.findById(salonId)
             .select('reviews')
-            .populate('reviews.userId', 'name phone'); // populate user's name & phone
+            .populate('reviews.userId', 'name phone'); 
 
         if (!salon) {
             return res.status(404).json({ message: "Salon not found." });
