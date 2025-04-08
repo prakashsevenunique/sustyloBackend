@@ -386,25 +386,28 @@ exports.addReview = async (req, res) => {
             return res.status(404).json({ message: "User not found." });
         }
 
-        const salon = await Salon.findById(salonId);
-        if (!salon) {
-            return res.status(404).json({ message: "Salon not found." });
-        }
-
         const newReview = {
             userId: user._id,
             rating,
             comment,
         };
 
-        salon.reviews.push(newReview);
-        await salon.save();
+        const updatedSalon = await Salon.findByIdAndUpdate(
+            salonId,
+            { $push: { reviews: newReview } },
+            { new: true } // returns updated salon
+        ) // optional: populate for return
 
-        res.status(201).json({ message: "Review added successfully.", salon });
+        if (!updatedSalon) {
+            return res.status(404).json({ message: "Salon not found." });
+        }
+
+        res.status(201).json({ message: "Review added successfully.", salon: updatedSalon });
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
+
 
 
 exports.getReviews = async (req, res) => {
