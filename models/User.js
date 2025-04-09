@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const userSchema = new mongoose.Schema({
   mobileNumber: { type: String, required: true, unique: true },
   role: { type: String, enum: ["user", "shop_owner", "admin"], required: true },

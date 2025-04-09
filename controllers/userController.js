@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const referralService = require("../services/referralService");
 const { addReferralBonus } = require("../services/referralService");
 const Salon = require("../models/salon");
+const mongoose = require('mongoose');
 
 
 exports.sendOtpController = async (req, res) => {
@@ -239,30 +240,70 @@ exports.getReferralCode = async (req, res) => {
 
 exports.getUserReviews = async (req, res) => {
   try {
-      const { userId } = req.params;
+    const { userId } = req.params;
 
-      
-      const salons = await Salon.find({ "reviews.userId": userId })
-          .select("salonName reviews")
-          .populate("reviews.userId", "name phone"); 
-
-      const userReviews = [];
-
-      salons.forEach(salon => {
-          salon.reviews.forEach(review => {
-              if (review.userId._id.toString() === userId) {
-                  userReviews.push({
-                      salonName: salon.salonName,
-                      rating: review.rating,
-                      comment: review.comment,
-                      date: review.createdAt
-                  });
-              }
-          });
+    const user = await User.findById(userId).select('name email profilePhoto');
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
       });
+    }
 
-      res.status(200).json({ success: true, reviews: userReviews });
+    const salons = await Salon.find({
+      "reviews.userId": new mongoose.Types.ObjectId(userId)
+    })
+    .select('salonName salonPhotos salonAddress reviews')
+    .populate('reviews.userId', 'name profilePhoto');
+
+    const userReviews = [];
+    
+    salons.forEach(salon => {
+      salon.reviews.forEach(review => {
+        if (
+          (review.userId?._id?.toString() || review.userId?.toString()) === userId
+        ) {
+          userReviews.push({
+            salon: {
+              id: salon._id,
+              name: salon.salonName,
+              address: salon.salonAddress,
+              mainPhoto: salon.salonPhotos[0] || null
+            },
+            review: {
+              id: review._id,
+              rating: review.rating,
+              comment: review.comment,
+              date: review.createdAt
+            },
+            user: {
+              name: user.name,
+              photo: user.profilePhoto
+            }
+          });
+        }
+      });
+    });
+
+    userReviews.sort((a, b) => b.review.date - a.review.date);
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      },
+      totalReviews: userReviews.length,
+      reviews: userReviews
+    });
+
   } catch (error) {
-      res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    console.error("Error fetching user reviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user reviews",
+      error: error.message
+    });
   }
 };
