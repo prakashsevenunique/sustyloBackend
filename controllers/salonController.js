@@ -216,10 +216,25 @@ exports.getAllSalons = async (req, res) => {
 
 exports.getNearbySalons = async (req, res) => {
     try {
-        const { latitude, longitude ,search} = req.query;
-
-        const searches = search || ''; // e.g., "gentel" or "haircut"
-        const status = "approve"; // show only approved salons
+        const { 
+            latitude, 
+            longitude,
+            search,
+            gender,
+            serviceTitle,
+            serviceDescription,
+            minRate,
+            maxRate,
+            salonName,
+            salonAddress,
+            salonTitle,
+            salonDescription,
+            facilities,
+            minReviewCount,
+            maxDistance = 100, // Default max distance in km
+            sortBy = 'distance', // Default sort by distance
+            sortOrder = 'asc' // Default ascending order
+        } = req.query;
 
         if (!latitude || !longitude) {
             return res.status(400).json({ message: "Latitude and Longitude are required." });
@@ -227,7 +242,6 @@ exports.getNearbySalons = async (req, res) => {
 
         const lat = parseFloat(latitude);
         const lon = parseFloat(longitude);
-
 
         // Convert all stored lat/lng to numbers to avoid mismatches
         await Salon.updateMany({}, [
@@ -253,42 +267,113 @@ exports.getNearbySalons = async (req, res) => {
             return R * c; // Distance in km
         };
 
+        // Function to calculate average rating
+        const calculateAverageRating = (reviews) => {
+            if (!reviews || reviews.length === 0) return 0;
+            const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+            return sum / reviews.length;
+        };
+
+        // Function to calculate min service price
+        const calculateMinServicePrice = (services) => {
+            if (!services || services.length === 0) return Infinity;
+            return Math.min(...services.map(service => service.rate));
+        };
+
+        // Build the base query
+        const baseQuery = {
+            latitude: { $exists: true, $ne: null },
+            longitude: { $exists: true, $ne: null },
+            status: "approved"
+        };
+
+        // ... [Previous filter code remains the same until the searchWithinRadius function] ...
+
         const searchWithinRadius = async (radius) => {
             console.log(`🔍 Searching salons within ${radius} km...`);
 
-            const salons = await Salon.find({
-                latitude: { $exists: true, $ne: null },
-                longitude: { $exists: true, $ne: null },
-                status: status,
-                $or: [
-                    { 'services.category': { $regex: searches, $options: 'i' } },
-                ] // optional additional category filter
-            }).lean();
+            const salons = await Salon.find(baseQuery).lean();
 
-            // Calculate distance for each salon
-            const filteredSalons = salons
-                .map(salon => {
-                    salon.latitude = parseFloat(salon.latitude);
-                    salon.longitude = parseFloat(salon.longitude);
-                    salon.distance = calculateDistance(salon.latitude, salon.longitude);
-                    return salon;
-                })
-                .filter(salon => salon.distance <= radius) // Filter salons within the radius
-                .sort((a, b) => a.distance - b.distance); // Sort by distance
+            // Process each salon
+            const processedSalons = salons.map(salon => {
+                salon.latitude = parseFloat(salon.latitude);
+                salon.longitude = parseFloat(salon.longitude);
+                salon.distance = calculateDistance(salon.latitude, salon.longitude);
+                salon.reviewCount = salon.reviews ? salon.reviews.length : 0;
+                salon.averageRating = calculateAverageRating(salon.reviews);
+                salon.minServicePrice = calculateMinServicePrice(salon.services);
+                
+                // Filter services based on criteria
+                if (gender || serviceTitle || serviceDescription || minRate || maxRate) {
+                    salon.services = salon.services.filter(service => {
+                        let matches = true;
+                        
+                        if (gender && service.gender !== gender) matches = false;
+                        if (serviceTitle && !new RegExp(serviceTitle, 'i').test(service.title)) matches = false;
+                        if (serviceDescription && !new RegExp(serviceDescription, 'i').test(service.description)) matches = false;
+                        if (minRate && service.rate < parseFloat(minRate)) matches = false;
+                        if (maxRate && service.rate > parseFloat(maxRate)) matches = false;
+                        
+                        return matches;
+                    });
+                }
+                
+                return salon;
+            });
+
+            // Filter salons within radius and with matching services
+            let filteredSalons = processedSalons
+                .filter(salon => salon.distance <= radius)
+                .filter(salon => {
+                    if (gender || serviceTitle || serviceDescription || minRate || maxRate) {
+                        return salon.services.length > 0;
+                    }
+                    return true;
+                });
+
+            // Apply sorting
+            filteredSalons.sort((a, b) => {
+                let comparison = 0;
+                
+                switch (sortBy) {
+                    case 'distance':
+                        comparison = a.distance - b.distance;
+                        break;
+                    case 'price':
+                        comparison = a.minServicePrice - b.minServicePrice;
+                        break;
+                    case 'rating':
+                        comparison = b.averageRating - a.averageRating; // Higher ratings first
+                        break;
+                    default:
+                        comparison = a.distance - b.distance;
+                }
+                
+                // Apply sort order
+                return sortOrder === 'desc' ? -comparison : comparison;
+            });
+
             console.log(`Found ${filteredSalons.length} salons within ${radius} km`);
             return filteredSalons;
         };
 
-        // Check in increasing radius
-        let salons = await searchWithinRadius(2);
-        if (salons.length === 0) salons = await searchWithinRadius(5);
-        if (salons.length === 0) salons = await searchWithinRadius(10);
-
-        if (salons.length === 0) {
-            return res.status(404).json({ message: "No salons found." });
+        // Check in increasing radius up to maxDistance
+        let salons = [];
+        const radiusSteps = [2, 5, maxDistance]; // Search in 2km, then 5km, then maxDistance
+        
+        for (const radius of radiusSteps) {
+            salons = await searchWithinRadius(radius);
+            if (salons.length > 0) break; // Stop if we found salons
         }
 
-        res.status(200).json({ count: salons.length, salons });
+        if (salons.length === 0) {
+            return res.status(404).json({ message: "No salons found matching your criteria." });
+        }
+
+        res.status(200).json({ 
+            count: salons.length, 
+            salons,
+        });
 
     } catch (error) {
         console.error("🚨 Error:", error);
