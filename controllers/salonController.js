@@ -211,9 +211,6 @@ exports.getAllSalons = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
-
-
-
 exports.getNearbySalons = async (req, res) => {
     try {
         const { 
