@@ -4,7 +4,8 @@ const {
   getNearbySalons,
   SalonLead,
   getSalonById,
-  updateSalon,
+  updateSalonMedia,
+  updateSalonDetails,
   approveSalon,
   getAllSalons,
   getTopReviewedSalons,
@@ -42,15 +43,17 @@ router.get("/review/:salonId", getReviews);
 router.get("/nearby", getNearbySalonsByService);
 
 
+// New separated update routes
 router.put(
-  "/update/:salonId",
+  "/update/media/:salonId",
   upload.fields([
     { name: "salonPhotos", maxCount: 5 },
     { name: "salonAgreement", maxCount: 1 },
   ]),
-  updateSalon
+  updateSalonMedia
 );
 
+router.put("/update/details/:salonId", updateSalonDetails);
 
 router.post("/review/:salonId", addReview);
 

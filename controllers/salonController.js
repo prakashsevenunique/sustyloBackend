@@ -67,49 +67,21 @@ const extractLatLng = (mapUrl) => {
     return { latitude: null, longitude: null };
 };
 
-
-exports.updateSalon = async (req, res) => {
+exports.updateSalonMedia = async (req, res) => {
     try {
         const { salonId } = req.params;
-        console.log("📌 Update Salon API hit with Salon ID:", salonId);
+        console.log("📌 Update Salon Media API hit with Salon ID:", salonId);
 
-      
         if (!mongoose.Types.ObjectId.isValid(salonId)) {
             return res.status(400).json({ error: "Invalid Salon ID" });
         }
 
-        
         let salon = await Salon.findById(salonId);
         if (!salon) {
             console.error("🚨 Salon not found:", salonId);
             return res.status(404).json({ error: "Salon not found" });
         }
 
-        console.log("📌 Existing Salon Data:", salon);
-        console.log("📌 Request Body:", req.body);
-
-        const {
-            ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
-            socialLinks, openingHours, facilities, services, category, bankDetails
-        } = req.body;
-
-       
-        if (email && email !== salon.email) {
-            const existingSalon = await Salon.findOne({ email });
-            if (existingSalon) {
-                return res.status(400).json({ error: "This email is already used by another salon." });
-            }
-        }
-
-      
-        let { latitude, longitude } = salon;
-        if (locationMapUrl) {
-            const coords = extractLatLng(locationMapUrl);
-            latitude = coords.latitude;
-            longitude = coords.longitude;
-        }
-
-        
         let salonPhotos = salon.salonPhotos || [];
         let salonAgreement = salon.salonAgreement || "";
 
@@ -121,38 +93,201 @@ exports.updateSalon = async (req, res) => {
             salonAgreement = req.files["salonAgreement"][0].path;
         }
 
-       
-        let parsedServices = [];
-        if (services) {
-            try {
-                parsedServices = JSON.parse(services);
-                if (!Array.isArray(parsedServices)) {
-                    return res.status(400).json({ error: "Services should be a JSON array." });
-                }
-            } catch (error) {
-                return res.status(400).json({ error: "Invalid services format. Send a valid JSON array." });
+        salon = await Salon.findByIdAndUpdate(
+            salonId,
+            { salonPhotos, salonAgreement },
+            { new: true }
+        );
+
+        console.log("✅ Salon Media Updated Successfully:", salon);
+        res.status(200).json({ message: "Salon media updated successfully", salon });
+    } catch (error) {
+        console.error("🚨 Error updating salon media:", error);
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+}; 
+
+
+exports.updateSalonDetails = async (req, res) => {
+    try {
+        const { salonId } = req.params;
+        console.log("📌 Update Salon Details API hit with Salon ID:", salonId);
+
+        if (!mongoose.Types.ObjectId.isValid(salonId)) {
+            return res.status(400).json({ error: "Invalid Salon ID" });
+        }
+
+        let salon = await Salon.findById(salonId);
+        if (!salon) {
+            console.error("🚨 Salon not found:", salonId);
+            return res.status(404).json({ error: "Salon not found" });
+        }
+
+        const {
+            ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
+            socialLinks, openingHours, facilities, services, category, bankDetails
+        } = req.body;
+
+        // Email uniqueness check
+        if (email && email !== salon.email) {
+            const existingSalon = await Salon.findOne({ email });
+            if (existingSalon) {
+                return res.status(400).json({ error: "This email is already used by another salon." });
             }
         }
 
-      
+        // Location coordinates
+        let { latitude, longitude } = salon;
+        if (locationMapUrl) {
+            const coords = extractLatLng(locationMapUrl);
+            latitude = coords.latitude;
+            longitude = coords.longitude;
+        }
+
+
+
         salon = await Salon.findByIdAndUpdate(
             salonId,
             {
                 ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
                 socialLinks, openingHours, facilities, category, latitude, longitude,
-                salonPhotos, salonAgreement, services: parsedServices, bankDetails
+                services, bankDetails
             },
             { new: true }
         );
 
-        console.log("✅ Salon Updated Successfully:", salon);
-        res.status(200).json({ message: "Salon updated successfully. Status remains 'pending' until admin approval.", salon });
+        console.log("✅ Salon Details Updated Successfully:", salon);
+        res.status(200).json({ message: "Salon details updated successfully", salon });
     } catch (error) {
-        console.error("🚨 Error updating salon:", error);
+        console.error("🚨 Error updating salon details:", error);
         res.status(500).json({ error: "Internal Server Error", details: error.message });
-
     }
 };
+
+exports.updateSalonMedia = async (req, res) => {
+    try {
+        const { salonId } = req.params;
+        console.log("📌 Update Salon Media API hit with Salon ID:", salonId);
+
+        if (!mongoose.Types.ObjectId.isValid(salonId)) {
+            return res.status(400).json({ error: "Invalid Salon ID" });
+        }
+
+        let salon = await Salon.findById(salonId);
+        if (!salon) {
+            console.error("🚨 Salon not found:", salonId);
+            return res.status(404).json({ error: "Salon not found" });
+        }
+
+        let salonPhotos = salon.salonPhotos || [];
+        let salonAgreement = salon.salonAgreement || "";
+
+        if (req.files && req.files["salonPhotos"]) {
+            salonPhotos = req.files["salonPhotos"].map((file) => file.path);
+        }
+
+        if (req.files && req.files["salonAgreement"]) {
+            salonAgreement = req.files["salonAgreement"][0].path;
+        }
+
+        salon = await Salon.findByIdAndUpdate(
+            salonId,
+            { salonPhotos, salonAgreement },
+            { new: true }
+        );
+
+        console.log("✅ Salon Media Updated Successfully:", salon);
+        res.status(200).json({ message: "Salon media updated successfully", salon });
+    } catch (error) {
+        console.error("🚨 Error updating salon media:", error);
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};
+// exports.updateSalon = async (req, res) => {
+//     try {
+//         const { salonId } = req.params;
+//         console.log("📌 Update Salon API hit with Salon ID:", salonId);
+
+      
+//         if (!mongoose.Types.ObjectId.isValid(salonId)) {
+//             return res.status(400).json({ error: "Invalid Salon ID" });
+//         }
+
+        
+//         let salon = await Salon.findById(salonId);
+//         if (!salon) {
+//             console.error("🚨 Salon not found:", salonId);
+//             return res.status(404).json({ error: "Salon not found" });
+//         }
+
+//         console.log("📌 Existing Salon Data:", salon);
+//         console.log("📌 Request Body:", req.body);
+
+//         const {
+//             ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
+//             socialLinks, openingHours, facilities, services, category, bankDetails
+//         } = req.body;
+
+       
+//         if (email && email !== salon.email) {
+//             const existingSalon = await Salon.findOne({ email });
+//             if (existingSalon) {
+//                 return res.status(400).json({ error: "This email is already used by another salon." });
+//             }
+//         }
+
+      
+//         let { latitude, longitude } = salon;
+//         if (locationMapUrl) {
+//             const coords = extractLatLng(locationMapUrl);
+//             latitude = coords.latitude;
+//             longitude = coords.longitude;
+//         }
+
+        
+//         let salonPhotos = salon.salonPhotos || [];
+//         let salonAgreement = salon.salonAgreement || "";
+
+//         if (req.files && req.files["salonPhotos"]) {
+//             salonPhotos = req.files["salonPhotos"].map((file) => file.path);
+//         }
+
+//         if (req.files && req.files["salonAgreement"]) {
+//             salonAgreement = req.files["salonAgreement"][0].path;
+//         }
+
+       
+//         let parsedServices = [];
+//         if (services) {
+//             try {
+//                 parsedServices = JSON.parse(services);
+//                 if (!Array.isArray(parsedServices)) {
+//                     return res.status(400).json({ error: "Services should be a JSON array." });
+//                 }
+//             } catch (error) {
+//                 return res.status(400).json({ error: "Invalid services format. Send a valid JSON array." });
+//             }
+//         }
+
+      
+//         salon = await Salon.findByIdAndUpdate(
+//             salonId,
+//             {
+//                 ownerName, salonName, mobile, email, salonAddress, locationMapUrl, salonTitle, salonDescription,
+//                 socialLinks, openingHours, facilities, category, latitude, longitude,
+//                 salonPhotos, salonAgreement, services: parsedServices, bankDetails
+//             },
+//             { new: true }
+//         );
+
+//         console.log("✅ Salon Updated Successfully:", salon);
+//         res.status(200).json({ message: "Salon updated successfully. Status remains 'pending' until admin approval.", salon });
+//     } catch (error) {
+//         console.error("🚨 Error updating salon:", error);
+//         res.status(500).json({ error: "Internal Server Error", details: error.message });
+
+//     }
+// };
 
 exports.approveSalon = async (req, res) => {
     try {

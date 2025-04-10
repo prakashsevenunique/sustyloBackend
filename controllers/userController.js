@@ -76,7 +76,7 @@ exports.verifyOTPController = async (req, res) => {
      
       const wallet = new Wallet({
         user: user._id,
-        balance: 100,
+        balance: referredByUser ? 100 : 0,
       });
 
       await wallet.save();
