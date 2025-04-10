@@ -4,6 +4,7 @@
   const Wallet = require("../models/Wallet");
   const referralService = require("../services/referralService");
 const Payout = require("../models/payout");
+const PayIn  = require('../models/payin');
 
 //   exports.createBooking = async (req, res) => {
 //     try {
@@ -134,7 +135,7 @@ exports.createBooking = async (req, res) => {
 
         // Deduct amount from wallet
         userWallet.balance -= totalAmount;
-        await user.save();
+        await userWallet.save();
 
         // Create payout transaction record
         const payOutData = new Payout({
@@ -270,7 +271,26 @@ exports.cancelBooking = async (req, res) => {
 
         const booking = await Booking.findById(bookingId);
         if (!booking) return res.status(404).json({ error: 'Booking not found' });
+        const user = await User.findById(booking.userId);
+        if (!user) return res.status(404).json({ error: 'User not found'})
+        const userWallet = await Wallet.findOne({user: booking.userId});
+        console.log("user wallet is:", userWallet);
+        
+        // Deduct amount from wallet
+        userWallet.balance += booking.totalAmount;
+        await userWallet.save();
 
+        const payInData = new PayIn({
+            userId: user._id,
+            amount: booking.totalAmount,
+            remark: "Salon Booking",
+            status: "Approved",
+            name: user.name,
+            email: user.email,
+            mobile: user.mobileNumber,
+            reference: `BOOKING-${Date.now()}`
+        });
+        await payInData.save();
         booking.status = 'Cancelled';
         await booking.save();
 
