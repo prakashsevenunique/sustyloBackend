@@ -17,13 +17,13 @@ exports.sendOtpController = async (req, res) => {
     if (!mobileNumber) {
       return res.status(400).json({ message: "Mobile number is required" });
     }
-
+    let user = await User.findOne({ mobileNumber });
    
     const otp = await generateOtp(mobileNumber);
     const smsResult = await sendOtp(mobileNumber, otp);
 
     return smsResult.success
-      ? res.status(200).json({ message: "OTP sent successfully" })
+      ? res.status(200).json({ message: "OTP sent successfully" ,existing : user ? true : false})
       : res.status(400).json({ message: smsResult.message });
   } catch (error) {
     console.error("Error in sendOtpController:", error);
