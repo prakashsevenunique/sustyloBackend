@@ -321,7 +321,12 @@ exports.getNearbySalons = async (req, res) => {
         const searchWithinRadius = async (radius) => {
             console.log(`🔍 Searching salons within ${radius} km...`);
 
-            const salons = await Salon.find(baseQuery).lean();
+            const query = {
+                ...baseQuery,
+                salonName: { $regex: search, $options: "i" } // case-insensitive partial match
+            };
+
+            const salons = await Salon.find(query).lean();
 
             // Process each salon
             const processedSalons = salons.map(salon => {
@@ -336,13 +341,11 @@ exports.getNearbySalons = async (req, res) => {
                 if (gender || serviceTitle || serviceDescription || minRate || maxRate) {
                     salon.services = salon.services.filter(service => {
                         let matches = true;
-                        
                         if (gender && service.gender !== gender) matches = false;
                         if (serviceTitle && !new RegExp(serviceTitle, 'i').test(service.title)) matches = false;
                         if (serviceDescription && !new RegExp(serviceDescription, 'i').test(service.description)) matches = false;
                         if (minRate && service.rate < parseFloat(minRate)) matches = false;
                         if (maxRate && service.rate > parseFloat(maxRate)) matches = false;
-                        
                         return matches;
                     });
                 }
