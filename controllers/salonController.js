@@ -10,18 +10,18 @@ exports.SalonLead = async (req, res) => {
 
         const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
-        
+
         if (!ownerName || !salonName || !mobile || !email || !salonAddress) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
-       
+
         const existingSalon = await Salon.findOne({ mobile });
         if (existingSalon) {
             return res.status(400).json({ message: "Salon with this mobile number already exists." });
         }
 
-     
+
         const newSalon = new Salon({
             ownerName,
             salonName,
@@ -64,7 +64,7 @@ exports.updateSalonDetails = async (req, res) => {
         const {
             ownerName, salonName, mobile, email, salonAddress, locationMapUrl,
             salonTitle, salonDescription, socialLinks, openingHours, facilities,
-            services, category, bankDetails,latitude, longitude
+            services, category, bankDetails, latitude, longitude
         } = req.body;
 
         // Validate salonId
@@ -83,7 +83,8 @@ exports.updateSalonDetails = async (req, res) => {
             const existingSalon = await Salon.findOne({ email });
             if (existingSalon) {
                 return res.status(400).json({ error: "Email already in use" });
-            }}
+            }
+        }
 
         // Update salon
         salon = await Salon.findByIdAndUpdate(
@@ -103,7 +104,7 @@ exports.updateSalonDetails = async (req, res) => {
 
     } catch (error) {
         console.error("Update error:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: "Server error",
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
@@ -114,14 +115,14 @@ exports.updateSalonDetails = async (req, res) => {
 // Improved coordinate extraction
 function extractLatLng(url) {
     if (!url) throw new Error("Empty URL");
-    
+
     // Support multiple URL formats:
     // 1. https://maps.google.com/?q=LAT,LNG
     // 2. https://www.google.com/maps/place/@LAT,LNG
     // 3. https://goo.gl/maps/XXXX
-    
+
     let lat, lng;
-    
+
     // Case 1: ?q=LAT,LNG
     const qParamMatch = url.match(/[?&]q=([^&]+)/);
     if (qParamMatch) {
@@ -131,7 +132,7 @@ function extractLatLng(url) {
             lng = parseFloat(coords[1]);
         }
     }
-    
+
     // Case 2: /@LAT,LNG
     if (!lat && !lng) {
         const atParamMatch = url.match(/@([-\d.]+),([-\d.]+)/);
@@ -140,9 +141,9 @@ function extractLatLng(url) {
             lng = parseFloat(atParamMatch[2]);
         }
     }
-    
+
     if (!lat || !lng) throw new Error("Could not extract coordinates from URL");
-    
+
     return { latitude: lat, longitude: lng };
 }
 
@@ -184,7 +185,7 @@ exports.updateSalonMedia = async (req, res) => {
         console.error("🚨 Error updating salon media:", error);
         res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
-}; 
+};
 
 exports.approveSalon = async (req, res) => {
     try {
@@ -193,12 +194,12 @@ exports.approveSalon = async (req, res) => {
 
         if (!salon) return res.status(404).json({ message: "Salon not found" });
 
-       
+
         salon.services = salon.services.filter(service =>
             service.title && service.description && service.rate && service.duration && service.gender
         );
 
-       
+
         salon.status = "approved";
         await salon.save();
 
@@ -245,8 +246,8 @@ exports.getAllSalons = async (req, res) => {
 };
 exports.getNearbySalons = async (req, res) => {
     try {
-        const { 
-            latitude, 
+        const {
+            latitude,
             longitude,
             search,
             gender,
@@ -321,15 +322,15 @@ exports.getNearbySalons = async (req, res) => {
         const searchWithinRadius = async (radius) => {
             console.log(`🔍 Searching salons within ${radius} km...`);
 
-    // Start with base query
-    const query = { ...baseQuery };
+            // Start with base query
+            const query = { ...baseQuery };
 
-    // Only add regex search if search parameter exists
-    if (search) {
-        query.salonName = { $regex: search, $options: "i" };
-    }
+            // Only add regex search if search parameter exists
+            if (search) {
+                query.salonName = { $regex: search, $options: "i" };
+            }
 
-    const salons = await Salon.find(query).lean();
+            const salons = await Salon.find(query).lean();
 
             // Process each salon
             const processedSalons = salons.map(salon => {
@@ -339,7 +340,7 @@ exports.getNearbySalons = async (req, res) => {
                 salon.reviewCount = salon.reviews ? salon.reviews.length : 0;
                 salon.averageRating = calculateAverageRating(salon.reviews);
                 salon.minServicePrice = calculateMinServicePrice(salon.services);
-                
+
                 // Filter services based on criteria
                 if (gender || serviceTitle || serviceDescription || minRate || maxRate) {
                     salon.services = salon.services.filter(service => {
@@ -352,7 +353,7 @@ exports.getNearbySalons = async (req, res) => {
                         return matches;
                     });
                 }
-                
+
                 return salon;
             });
 
@@ -369,7 +370,7 @@ exports.getNearbySalons = async (req, res) => {
             // Apply sorting
             filteredSalons.sort((a, b) => {
                 let comparison = 0;
-                
+
                 switch (sortBy) {
                     case 'distance':
                         comparison = a.distance - b.distance;
@@ -383,7 +384,7 @@ exports.getNearbySalons = async (req, res) => {
                     default:
                         comparison = a.distance - b.distance;
                 }
-                
+
                 // Apply sort order
                 return sortOrder === 'desc' ? -comparison : comparison;
             });
@@ -395,7 +396,7 @@ exports.getNearbySalons = async (req, res) => {
         // Check in increasing radius up to maxDistance
         let salons = [];
         const radiusSteps = [2, 5, maxDistance]; // Search in 2km, then 5km, then maxDistance
-        
+
         for (const radius of radiusSteps) {
             salons = await searchWithinRadius(radius);
             if (salons.length > 0) break; // Stop if we found salons
@@ -405,8 +406,8 @@ exports.getNearbySalons = async (req, res) => {
             return res.status(404).json({ message: "No salons found matching your criteria." });
         }
 
-        res.status(200).json({ 
-            count: salons.length, 
+        res.status(200).json({
+            count: salons.length,
             salons,
         });
 
@@ -418,17 +419,28 @@ exports.getNearbySalons = async (req, res) => {
 
 exports.getTopReviewedSalons = async (req, res) => {
     try {
-        console.log("🔍 Searching for top 5 reviewed salons...");
+        console.log("🔍 Searching for top 5 reviewed salons by average rating...");
 
-      
-        const salons = await Salon.find({
-            reviews: { $exists: true, $ne: null } 
-        })
-            .sort({ "reviews.length": -1 })
-            .limit(5) 
-            .lean();
+        const salons = await Salon.aggregate([
+            {
+                $match: {
+                    reviews: { $exists: true }
+                }
+            },
+            {
+                $addFields: {
+                    avgRating: { $avg: "$reviews.rating" }
+                }
+            },
+            {
+                $sort: { avgRating: -1 }
+            },
+            {
+                $limit: 5
+            }
+        ]);
 
-        console.log(`🟢 Found ${salons.length} top reviewed salons`);
+        console.log(`🟢 Found ${salons.length} top rated salons`);
 
         if (salons.length === 0) {
             return res.status(404).json({ message: "No reviewed salons found." });
@@ -447,7 +459,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     function deg2rad(deg) {
         return deg * (Math.PI / 180);
     }
-    const R = 6371; 
+    const R = 6371;
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
@@ -485,7 +497,7 @@ exports.getNearbySalonsByService = async (req, res) => {
                 );
                 return { ...salon.toObject(), distance };
             })
-            .filter((salon) => salon.distance <= 10) 
+            .filter((salon) => salon.distance <= 10)
             .sort((a, b) => a.distance - b.distance);
 
         res.status(200).json({ salons: filteredSalons });
@@ -554,7 +566,7 @@ exports.getReviews = async (req, res) => {
 
         const salon = await Salon.findById(salonId)
             .select('reviews')
-            .populate('reviews.userId', 'name phone'); 
+            .populate('reviews.userId', 'name phone');
 
         if (!salon) {
             return res.status(404).json({ message: "Salon not found." });
