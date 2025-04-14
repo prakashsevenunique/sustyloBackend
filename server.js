@@ -14,6 +14,7 @@ const referralService = require("./services/referralService");
 const paymentRoutes = require("./routes/paymentRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const blogRoutes = require("./routes/blogRoutes.js");
+const subscriberRoutes = require("./routes/subscriberRoutes");
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/schedule", scheduleRoutes);
 app.use("/api/wallet", mainWalletRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api/subscribe", subscriberRoutes);
 
 console.log("✅ Registered Routes:");
 app._router.stack.forEach((r) => {
