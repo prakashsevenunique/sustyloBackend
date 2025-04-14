@@ -1,51 +1,41 @@
-const Subscriber = require("../models/Subscriber");
+const GetInTouch = require("../models/GetInTouch");
 
-// POST: Subscribe user
-exports.subscribeUser = async (req, res) => {
+// Add entry
+exports.addGetInTouch = async (req, res) => {
   try {
     const { name, email, mobile } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const existing = await Subscriber.findOne({ email });
-    if (existing) {
-      return res.status(409).json({ message: "Already subscribed" });
+    if (!name || !email || !mobile) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    const subscriber = new Subscriber({ name, email, mobile });
-    await subscriber.save();
-    res.status(200).json({ message: "Subscribed successfully", data: subscriber });
+    const newEntry = new GetInTouch({ name, email, mobile });
+    await newEntry.save();
+
+    res.status(200).json({ message: "Submitted successfully", data: newEntry });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// GET: List all subscribers
-exports.getAllSubscribers = async (req, res) => {
+// Get all entries (admin panel)
+exports.getAllGetInTouch = async (req, res) => {
   try {
-    const subscribers = await Subscriber.find().sort({ createdAt: -1 });
-    res.status(200).json({ message: "Fetched successfully", data: subscribers });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-// POST: Admin sends newsletter update (future: email, push, etc.)
-exports.sendNewsletterUpdate = async (req, res) => {
-  try {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ message: "Message is required" });
+    const [entries, total] = await Promise.all([
+      GetInTouch.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+      GetInTouch.countDocuments()
+    ]);
 
-    const subscribers = await Subscriber.find();
-
-    // Future: integrate email / notification service
-    // For now, just return all emails the message would go to
-    const emails = subscribers.map(sub => sub.email);
-
-    // Simulate sending
     res.status(200).json({
-      message: "Newsletter update prepared",
-      update: message,
-      receivers: emails
+      message: "Fetched successfully",
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalEntries: total,
+      data: entries
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });

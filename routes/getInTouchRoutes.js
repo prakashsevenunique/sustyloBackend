@@ -1,13 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const {
-  subscribeUser,
-  getAllSubscribers,
-  sendNewsletterUpdate
+  addGetInTouch,
+  getAllGetInTouch
 } = require("../controllers/getInTouchController");
 
-router.post("/subscribe", subscribeUser);              // User subscribes
-router.get("/subscribers", getAllSubscribers);         // Admin fetches list
-router.post("/send-update", sendNewsletterUpdate);     // Admin sends newsletter
+router.post("/get-in-touch", addGetInTouch);        // User form submission
+router.get("/get-in-touch", getAllGetInTouch);      // Admin fetches all
 
 module.exports = router;
