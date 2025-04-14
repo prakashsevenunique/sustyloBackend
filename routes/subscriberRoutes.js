@@ -1,13 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const subscriberController = require("../controllers/subscriberController");
-const { protect, authorizeSuperAdmin } = require("../authMiddleware/authMiddleware");
+const { subscribe, getAllSubscribers, sendNotification } = require("../controllers/subscriberController");
 
-router.get("/all", protect, authorizeSuperAdmin, subscriberController.getAllSubscribers);
-
-// Public route for subscriptions
-router.post("/", subscriberController.subscribe);
-
-
+router.post("/subscribe", subscribe);  // User subscribes
+router.get("/subscribers", getAllSubscribers); // Admin fetches all subscribers
+router.post("/send-notification", sendNotification);  // Admin sends newsletter
 
 module.exports = router;

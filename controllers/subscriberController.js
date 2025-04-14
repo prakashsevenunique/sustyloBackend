@@ -1,5 +1,7 @@
+const nodemailer = require("nodemailer");
 const Subscriber = require("../models/Subscriber");
 
+// Subscribe new user
 exports.subscribe = async (req, res) => {
   try {
     const { email } = req.body;
@@ -11,11 +13,9 @@ exports.subscribe = async (req, res) => {
       });
     }
 
-    // Get client IP and approximate location
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     let location = null;
-    
-    // In production, you would use a geolocation API or service
+
     if (req.body.lat && req.body.lng) {
       location = {
         type: 'Point',
@@ -23,7 +23,6 @@ exports.subscribe = async (req, res) => {
       };
     }
 
-    // Check if email exists
     const exists = await Subscriber.findOne({ email });
     if (exists) {
       return res.status(200).json({
@@ -32,7 +31,6 @@ exports.subscribe = async (req, res) => {
       });
     }
 
-    // Save with location data
     await Subscriber.create({ 
       email, 
       location,
@@ -53,7 +51,7 @@ exports.subscribe = async (req, res) => {
   }
 };
 
-// Admin-only endpoint to get all subscribers
+// Get all subscribers
 exports.getAllSubscribers = async (req, res) => {
   try {
     const subscribers = await Subscriber.find({})
@@ -70,6 +68,52 @@ exports.getAllSubscribers = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch subscribers"
+    });
+  }
+};
+
+// Send newsletter notification
+exports.sendNotification = async (req, res) => {
+  try {
+    const { subject, content } = req.body;
+
+    if (!subject || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and content are required",
+      });
+    }
+
+    const subscribers = await Subscriber.find({});
+    const emails = subscribers.map(sub => sub.email);
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER, // Use .env file
+        pass: process.env.EMAIL_PASS
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: emails.join(','),
+      subject,
+      text: content,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      success: true,
+      message: "Notification sent to all subscribers successfully"
+    });
+
+  } catch (error) {
+    console.error("Notification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send notification"
     });
   }
 };
