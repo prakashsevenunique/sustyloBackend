@@ -321,12 +321,15 @@ exports.getNearbySalons = async (req, res) => {
         const searchWithinRadius = async (radius) => {
             console.log(`🔍 Searching salons within ${radius} km...`);
 
-            const query = {
-                ...baseQuery,
-                salonName: { $regex: search, $options: "i" } // case-insensitive partial match
-            };
+    // Start with base query
+    const query = { ...baseQuery };
 
-            const salons = await Salon.find(query).lean();
+    // Only add regex search if search parameter exists
+    if (search) {
+        query.salonName = { $regex: search, $options: "i" };
+    }
+
+    const salons = await Salon.find(query).lean();
 
             // Process each salon
             const processedSalons = salons.map(salon => {
