@@ -51,6 +51,8 @@ app.use("/api/blogs", blogRoutes);
 app.use("/api/subscribe", subscriberRoutes);
 app.use("/api", getInTouchRoutes);
 
+require('./services/bookingReminderCron');
+
 console.log("✅ Registered Routes:");
 app._router.stack.forEach((r) => {
     if (r.route && r.route.path) {

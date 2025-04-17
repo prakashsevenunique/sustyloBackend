@@ -7,9 +7,11 @@
         confirmBooking, 
         cancelBooking, 
         completeBooking, 
-        cancelUnpaidBooking 
+        cancelUnpaidBooking,
+        ownerCompleteBooking
     } = require('../controllers/bookingController');
 
+    const { protect, authorizeRoles } = require("../authMiddleware/authMiddleware");
   
     router.post('/create', createBooking);
 
@@ -30,5 +32,7 @@
 
    
     router.post('/complete/:bookingId', completeBooking);
+
+    router.post('/owner/complete/:bookingId', protect, authorizeRoles("owner"), ownerCompleteBooking);
 
     module.exports = router;

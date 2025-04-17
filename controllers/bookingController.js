@@ -342,3 +342,31 @@ exports.cancelBooking = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 };
+
+exports.ownerCompleteBooking = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const salonId = req.user.salonId;
+
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return res.status(404).json({ error: "Booking not found" });
+
+        if (booking.status === "Completed") {
+            return res.status(400).json({ error: "Booking already marked as completed" });
+        }
+
+        booking.status = "Completed";
+        booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
+
+        await booking.save();
+
+        res.status(200).json({
+            message: "Booking marked as completed successfully by owner.",
+            booking
+        });
+
+    } catch (error) {
+        console.error("Error in ownerCompleteBooking:", error);
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};

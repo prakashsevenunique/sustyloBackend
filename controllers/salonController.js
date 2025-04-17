@@ -1,6 +1,8 @@
 const Salon = require("../models/salon");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const JWT_SECRET = process.env.JWT_SECRET || "sevenunique5308";
+const jwt = require("jsonwebtoken");
 
 
 exports.SalonLead = async (req, res) => {
@@ -10,17 +12,14 @@ exports.SalonLead = async (req, res) => {
 
         const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
-
         if (!ownerName || !salonName || !mobile || !email || !salonAddress) {
             return res.status(400).json({ message: "All fields are required!" });
         }
-
 
         const existingSalon = await Salon.findOne({ mobile });
         if (existingSalon) {
             return res.status(400).json({ message: "Salon with this mobile number already exists." });
         }
-
 
         const newSalon = new Salon({
             ownerName,
@@ -28,17 +27,25 @@ exports.SalonLead = async (req, res) => {
             mobile,
             email,
             salonAddress,
-            status: "pending"
+            status: "pending",
         });
 
+        // Generate non-expiring token
+        const token = jwt.sign(
+            { salonId: newSalon._id, role: "owner" },
+            JWT_SECRET
+        );
+
+        newSalon.token = token; // Save token in DB
         await newSalon.save();
 
         res.status(201).json({
             message: "Salon registered successfully! Complete details using the update API. Status remains 'pending' until approved by admin.",
-            salon: newSalon
+            salon: newSalon,
+            token,
         });
     } catch (error) {
-        console.error("❌ Error:", error);
+        console.error("❌ Error in SalonLead:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };

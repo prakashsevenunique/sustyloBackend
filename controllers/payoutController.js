@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 
 const PayOut = require("../models/payout");
-
+const Wallet = require("../models/Wallet");
 const mongoose = require("mongoose");
 
 const payOut = async (req, res) => {
@@ -134,6 +134,15 @@ const callbackPayout = async (req, res) => {
     }
 
     if (data.status === "Success") {
+       const userWallet = await Wallet.findOne({user: payout.userId});
+            console.log("user wallet is:", userWallet);
+      
+      
+           
+      
+            userWallet.balance -= payout.amount;
+              await userWallet.save();
+      
       payout.status = "Approved";
       payout.txn_id = data.txn_id;
       await payout.save();
