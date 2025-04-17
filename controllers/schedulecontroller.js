@@ -84,3 +84,30 @@ exports.getAvailableSlots = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+exports.updateSchedule = async (req, res) => {
+  try {
+    const { salonId, weeklySchedule } = req.body;
+
+    if (!salonId || !weeklySchedule) {
+      return res.status(400).json({ error: "Salon ID and Weekly Schedule are required" });
+    }
+
+    // Check if the schedule exists for the given salonId
+    const existingSchedule = await Schedule.findOne({ salonId });
+
+    if (!existingSchedule) {
+      return res.status(404).json({ error: "Schedule not found for this salon" });
+    }
+
+    // Update the existing schedule with the new weeklySchedule
+    existingSchedule.weeklySchedule = weeklySchedule;
+    await existingSchedule.save();
+
+    res.status(200).json({ message: "Schedule updated successfully", schedule: existingSchedule });
+  } catch (error) {
+    console.error("Error in updateSchedule:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
