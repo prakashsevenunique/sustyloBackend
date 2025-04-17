@@ -1,28 +1,33 @@
 const Schedule = require("../models/scheduleSchema");
 
 exports.ScheduleAdd = async (req, res) => {
-    try {
-        const { salonId,  weeklySchedule } = req.body;
-    
-        if (!salonId || !weeklySchedule) {
-          return res.status(400).json({ error: "All fields are required" });
-        }
-    
-        
-        const existingSchedule = await Schedule.findOne({ salonId });
-        if (existingSchedule) {
-          return res.status(400).json({ error: "Schedule already exists, update instead." });
-        }
-    
-       
-        const schedule = new Schedule({ salonId,  weeklySchedule });
-        await schedule.save();
-    
-        res.status(201).json({ message: "Schedule added successfully", schedule });
-      } catch (error) {
-        res.status(500).json({ error: error.message });
-      }
-}; 
+  try {
+    const { salonId, weeklySchedule } = req.body;
+
+    if (!salonId || !weeklySchedule) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // Check if schedule already exists
+    const existingSchedule = await Schedule.findOne({ salonId });
+
+    if (existingSchedule) {
+      // Update the existing schedule
+      existingSchedule.weeklySchedule = weeklySchedule;
+      await existingSchedule.save();
+      return res.status(200).json({ message: "Schedule updated successfully", schedule: existingSchedule });
+    }
+
+    // If not exists, create new schedule
+    const schedule = new Schedule({ salonId, weeklySchedule });
+    await schedule.save();
+
+    res.status(201).json({ message: "Schedule added successfully", schedule });
+  } catch (error) {
+    console.error("Error in ScheduleAdd:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 
 
