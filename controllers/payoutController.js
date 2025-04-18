@@ -19,11 +19,19 @@ const payOut = async (req, res) => {
   } = req.body;
 
   if (!amount || !reference || !name || !mobile || !email || !trans_mode) {
-    return res.send("All fields are required");
+    return res.status(400).send("All fields are required");
+  }
+
+  // ✅ Check if a payout with the same reference already exists
+  const existingPayout = await PayOut.findOne({ reference });
+  if (existingPayout) {
+    return res.status(409).send({
+      message: "A payout with this reference already exists.",
+    });
   }
 
   const newPayOut = new PayOut({
-    userId: new mongoose.Types.ObjectId(userId), 
+    userId: new mongoose.Types.ObjectId(userId),
     amount,
     reference,
     trans_mode,
@@ -35,7 +43,6 @@ const payOut = async (req, res) => {
     address,
   });
 
-  
   await newPayOut.save();
 
   return res.status(200).send({
@@ -78,7 +85,7 @@ const adminAction = async (req, res) => {
       mobile,
       address
     );
-    
+
     try {
       const payOutData = await axios.post(
         "https://api.worldpayme.com/api/v1.1/payoutTransaction",
@@ -122,38 +129,24 @@ const adminAction = async (req, res) => {
 const callbackPayout = async (req, res) => {
   console.log("callback reqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", req.body);
   try {
-    console.log("callback reqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", req.body);
-    const data = req.body;
-
-    console.log("sdfghj", data);
-
-    const payout = await PayOut.findOne({ reference: data.reference });
+    const {status, reference,utr} = req.query;
+    const payout = await PayOut.findOne({ reference });
 
     if (!payout) {
       return res.status(404).json({ message: "Transaction not found" });
     }
 
-    if (data.status === "Success") {
-       const userWallet = await Wallet.findOne({user: payout.userId});
-            console.log("user wallet is:", userWallet);
-      
-      
-           
-      
-            userWallet.balance -= payout.amount;
-              await userWallet.save();
-      
+    if (status === "Success") {
+      const userWallet = await Wallet.findOne({ user: payout.userId });
+      userWallet.balance -= payout.amount;
+      await userWallet.save();
       payout.status = "Approved";
-      payout.txn_id = data.txn_id;
+      payout.utr = utr;
       await payout.save();
-      console.log("payout callback", payout);
       return res.status(200).json({ message: "PayOut successful", payout });
     }
-
-   
     payout.status = "Failed";
     await payout.save();
-
     return res.status(400).json({ message: "Payment Failed", payout });
   } catch (error) {
     console.error("Error in callback response", error);
@@ -163,12 +156,12 @@ const callbackPayout = async (req, res) => {
 
 const payOutReportAllUsers = async (req, res) => {
   try {
-    const { userId, startDate, endDate, status } = req.query; 
+    const { userId, startDate, endDate, status } = req.query;
 
     let filter = {};
 
     if (userId) {
-      filter.userId = new mongoose.Types.ObjectId(userId); 
+      filter.userId = new mongoose.Types.ObjectId(userId);
     }
     if (status) {
       filter.status = status;
@@ -180,9 +173,9 @@ const payOutReportAllUsers = async (req, res) => {
       };
     }
 
-    
+
     const payouts = await PayOut.aggregate([
-      { $match: filter }, 
+      { $match: filter },
       {
         $lookup: {
           from: "users",

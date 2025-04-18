@@ -14,7 +14,7 @@ const payOutSchema = new mongoose.Schema(
             required:true
         }, 
         reference:{
-
+            unique:true,
             type:String,
             required:false
         }, 
