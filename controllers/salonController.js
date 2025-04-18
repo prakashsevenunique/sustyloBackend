@@ -262,13 +262,7 @@ exports.getNearbySalons = async (req, res) => {
             serviceDescription,
             minRate,
             maxRate,
-            salonName,
-            salonAddress,
-            salonTitle,
-            salonDescription,
-            facilities,
-            minReviewCount,
-            maxDistance = 100, // Default max distance in km
+            maxDistance = 200, // Default max distance in km
             sortBy = 'distance', // Default sort by distance
             sortOrder = 'asc' // Default ascending order
         } = req.query;
@@ -279,16 +273,6 @@ exports.getNearbySalons = async (req, res) => {
 
         const lat = parseFloat(latitude);
         const lon = parseFloat(longitude);
-
-        // Convert all stored lat/lng to numbers to avoid mismatches
-        await Salon.updateMany({}, [
-            {
-                $set: {
-                    latitude: { $toDouble: "$latitude" },
-                    longitude: { $toDouble: "$longitude" }
-                }
-            }
-        ]);
 
         // Function to calculate distance
         const calculateDistance = (salonLat, salonLon) => {
