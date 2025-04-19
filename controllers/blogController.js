@@ -44,14 +44,15 @@ exports.createBlog = (req, res) => {
         }
 
         try {
-            const { title, content } = req.body;
+            const { title, content, category } = req.body;
+            console.log("my req.body is:", req.body);
             
-            if (!title || !content) {
+            if (!title || !content || !category) {
                 // Delete uploaded file if validation fails
                 if (req.file) {
                     fs.unlinkSync(path.join(uploadFolder, req.file.filename));
                 }
-                return res.status(400).json({ message: "Title and content are required" });
+                return res.status(400).json({ message: "Title and content and category are required" });
             }
 
             const imageUrl = req.file 
@@ -61,6 +62,7 @@ exports.createBlog = (req, res) => {
             const blog = new Blog({
                 title,
                 content,
+                category,
                 imageUrl
             });
 
@@ -72,6 +74,7 @@ exports.createBlog = (req, res) => {
                     title: blog.title,
                     content: blog.content,
                     imageUrl: blog.imageUrl,
+                    category: blog.category,
                     createdAt: blog.createdAt
                 }
             });
@@ -115,7 +118,7 @@ exports.updateBlog = (req, res) => {
         }
 
         try {
-            const { title, content } = req.body;
+            const { title, content, category } = req.body;
             const blog = await Blog.findById(req.params.id);
 
             if (!blog) {
@@ -139,6 +142,7 @@ exports.updateBlog = (req, res) => {
 
             blog.title = title || blog.title;
             blog.content = content || blog.content;
+            blog.category = category || blog.category;
             await blog.save();
 
             res.status(200).json({
@@ -172,6 +176,22 @@ exports.deleteBlog = async (req, res) => {
         res.status(200).json({ message: "Blog deleted successfully" });
     } catch (error) {
         console.error("Error deleting blog:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+exports.getBlogsByCategory = async (req, res) => {
+    try {
+        const { category } = req.params;
+        const blogs = await Blog.find({ category }).sort({ createdAt: -1 });
+
+        if (blogs.length === 0) {
+            return res.status(404).json({ message: "No blogs found in this category" });
+        }
+
+        res.status(200).json(blogs);
+    } catch (error) {
+        console.error("Error fetching blogs by category:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };
