@@ -14,6 +14,8 @@ const {
     updateSalon
 } = require("../controllers/adminController");
 
+const MainWallet = require("../controllers/mainWallet");
+
 
 const router = express.Router();
 
@@ -36,5 +38,7 @@ router.get("/shop-wallets", protect, authorizeRoles("super_admin", "admin"), get
 router.get("/reports/shop-owner/:ownerId/payin", protect, authorizeRoles("super_admin", "admin"), getShopOwnerPayInReport);
 router.get("/reports/shop-owner/:ownerId/payout", protect, authorizeRoles("super_admin", "admin"), getShopOwnerPayoutReport);
 router.get("/reports/users/payin", protect, authorizeRoles("super_admin", "admin"), getAllUserPayInReport);
+router.get("/alluserwaellet", MainWallet.allUserWalletreport);
+router.get("/userwallet/:userId", MainWallet.userWalletreport);
 
 module.exports = router;
