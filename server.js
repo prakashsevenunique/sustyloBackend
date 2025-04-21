@@ -2,7 +2,6 @@ const express = require("express");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const helmet = require("helmet");
 const morgan = require("morgan");
 const errorHandler = require("./authMiddleware/errorMiddleware");
 const userRoutes = require("./routes/userRoutes");
@@ -31,13 +30,11 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 const app = express();
-
-
+const path = require("path");
 app.use(express.json());
 app.use(cors('*'));
-app.use(helmet());
 app.use(morgan("dev"));
-
+app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -60,16 +57,13 @@ app._router.stack.forEach((r) => {
     }
 });
 
-app.use("/uploads", express.static("uploads"));
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ✅ Reliable
 
 app.get("/", (req, res) => {
     res.send("Welcome to the API. Server is running!");
 });
 
-
 app.use(errorHandler);
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
