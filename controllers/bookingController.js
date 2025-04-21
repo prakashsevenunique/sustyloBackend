@@ -186,6 +186,18 @@ exports.createBooking = async (req, res) => {
     }
 };
 
+exports.getAllBookings = async (req, res) => {
+    try {
+        const bookings = await Booking.find()
+            .populate('userId', 'name email mobileNumber') // Optional: adjust fields
+            .populate('salonId', 'salonName salonAddress salonPhotos');
+
+        res.status(200).json({ bookings });
+    } catch (error) {
+        console.error("Error in getAllBookings:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+};
 
   exports.getUserBookings = async (req, res) => {
     try {
