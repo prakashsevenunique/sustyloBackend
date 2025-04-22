@@ -11,9 +11,8 @@ const {
     getShopOwnerPayInReport,
     getShopOwnerPayoutReport,
     getAllUserPayInReport,
-    updateSalon
-} = require("../controllers/adminController");
-
+    updateSalon} = require("../controllers/adminController");
+    const adminController = require("../controllers/adminController");
 const MainWallet = require("../controllers/mainWallet");
 
 
@@ -22,6 +21,7 @@ const router = express.Router();
 
 router.post("/login", loginAdmin);
 router.post("/register", registerAdmin); 
+router.get("/profile", adminController.getAdminProfile);
 
 
 router.get("/admin-users", protect, authorizeRoles("super_admin", "admin"), getAllUsers);
@@ -40,5 +40,6 @@ router.get("/reports/shop-owner/:ownerId/payout", protect, authorizeRoles("super
 router.get("/reports/users/payin", protect, authorizeRoles("super_admin", "admin"), getAllUserPayInReport);
 router.get("/alluserwaellet", MainWallet.allUserWalletreport);
 router.get("/userwallet/:userId", MainWallet.userWalletreport);
+
 
 module.exports = router;

@@ -73,6 +73,25 @@ exports.loginAdmin = async (req, res) => {
     }
 };
 
+exports.getAdminProfile = async (req, res) => {
+    try {
+        const admin = await Admin.findOne().select("-password");
+        if (!admin) {
+            return res.status(404).json({ message: "Admin not found" });
+        }
+
+        res.status(200).json({
+            message: "Admin profile fetched successfully",
+            admin
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error fetching admin profile",
+            error: error.message
+        });
+    }
+};
+
 
 exports.getAllUsers = async (req, res) => {
     try {
