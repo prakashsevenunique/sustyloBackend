@@ -75,7 +75,7 @@ exports.loginAdmin = async (req, res) => {
 
 exports.getAdminProfile = async (req, res) => {
     try {
-        const admin = await Admin.findOne().select("-password");
+        const admin = await Admin.findOne().select("-password"); // Exclude password
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
         }
