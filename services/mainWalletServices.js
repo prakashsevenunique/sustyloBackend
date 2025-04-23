@@ -115,7 +115,7 @@ const allUserWallet = async() => {
     // Step 2: Approved PayOut Transactions
     const payOutData = await PayOut.aggregate([
         { $match: { status: "Approved" } },
-        { $group: { _id: "$userId", totalPayOut: { $sum: "$amount" } } }
+        { $group: { _id: "$userId", totalPayOut: { $sum: {$toDouble: "$amount"} } } }
     ]);
  
     // Step 3: Failed & Pending PayIn Transactions
@@ -133,13 +133,13 @@ const allUserWallet = async() => {
     // Step 5: Failed & Pending PayOut Transactions
     const pendingPayOut = await PayOut.aggregate([
         { $match: { status: "Pending" } },
-        { $group: { _id: "$userId", totalPendingPayOut: { $sum: "$amount" } } }
+        { $group: { _id: "$userId", totalPendingPayOut: { $sum: {$toDouble: "$amount" }} } }
     ]);
  
      // Step 6: Failed & Pending PayOut Transactions
      const failedPayOut = await PayOut.aggregate([
         { $match: { status: "Failed" } },
-        { $group: { _id: "$userId", totalFailedPayOut: { $sum: "$amount" } } }
+        { $group: { _id: "$userId", totalFailedPayOut: { $sum: {$toDouble: "$amount" } } } }
     ]);
  
     // Converting results into maps for lookup
