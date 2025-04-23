@@ -99,7 +99,7 @@ exports.updateSalonDetails = async (req, res) => {
             {
                 ownerName, salonName, mobile, email, salonAddress, locationMapUrl,
                 salonTitle, salonDescription, socialLinks, openingHours, facilities,
-                category, latitude, longitude, services, bankDetails
+                category, latitude, longitude, services, bankDetails,aadharNumber,pancardNumber
             },
             { new: true, runValidators: true }
         );
