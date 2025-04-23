@@ -504,7 +504,7 @@ exports.addReview = async (req, res) => {
         const { salonId } = req.params;
         const { rating, comment, phone } = req.body;
 
-        const user = await User.findOne({ phone });
+        const user = await User.findOne({ mobileNumber:phone });
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
