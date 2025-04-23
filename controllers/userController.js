@@ -178,6 +178,68 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
+exports.addProfilePhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.files) {
+      return res.status(400).json({ error: "Profile photo is required" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.profilePhoto) {
+      return res.status(400).json({ error: "Profile photo already exists. Use update API to replace it." });
+    }
+
+    user.profilePhoto = req.files['profileImage'][0].path;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile photo added successfully",
+      photoPath: user.profilePhoto,
+    });
+  } catch (error) {
+    console.error("Add Profile Photo Error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+
+exports.updateProfilePhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Profile photo is required" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Delete old photo
+    if (user.profilePhoto) {
+      const oldPath = path.join(__dirname, "..", user.profilePhoto);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    user.profilePhoto = req.file.path;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile photo updated successfully",
+      photoPath: user.profilePhoto,
+    });
+  } catch (error) {
+    console.error("Update Profile Photo Error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+
+
 exports.getUserInfo = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -196,7 +258,7 @@ exports.getUserInfo = async (req, res) => {
     console.error("Error in getUserInfo:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
-};
+};  
 
 
 exports.getAllUsers = async (req, res) => {

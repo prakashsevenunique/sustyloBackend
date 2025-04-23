@@ -16,6 +16,7 @@ const payOut = async (req, res) => {
     mobile,
     email,
     address,
+    description
   } = req.body;
 
   if (!amount || !reference || !name || !mobile || !email || !trans_mode) {
@@ -41,6 +42,7 @@ const payOut = async (req, res) => {
     mobile,
     email,
     address,
+    description :description || "paid for order"
   });
 
   await newPayOut.save();

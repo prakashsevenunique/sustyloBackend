@@ -71,7 +71,7 @@ exports.updateSalonDetails = async (req, res) => {
         const {
             ownerName, salonName, mobile, email, salonAddress, locationMapUrl,
             salonTitle, salonDescription, socialLinks, openingHours, facilities,
-            services, category, bankDetails, latitude, longitude
+            services, category, bankDetails, latitude, longitude,aadharNumber,pancardNumber
         } = req.body;
 
         // Validate salonId

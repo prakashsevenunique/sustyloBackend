@@ -146,6 +146,7 @@ exports.createBooking = async (req, res) => {
             name: user.name,
             email: user.email,
             mobile: user.mobileNumber,
+            description: `Paid for BOOKING-${Date.now()}`,
             reference: `BOOKING-${Date.now()}`
         });
         await payOutData.save();
@@ -304,7 +305,8 @@ exports.cancelBooking = async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobileNumber,
-        reference: `BOOKING-${Date.now()}`
+        description: `Refund for ${bookingId}}`,
+        reference: bookingId
       });
       await payInData.save();
   

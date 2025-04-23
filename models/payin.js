@@ -8,6 +8,7 @@ const PayInSchema = new mongoose.Schema(
     name: { type: String, required: true },
     mobile: { type: String, required: true },
     email: { type: String, required: true },
+    description: { type: String },
     status: { type: String, enum: ["Pending", "Approved", "Failed"], default: "Pending" },
     utr: { type: String, required: false },
   },

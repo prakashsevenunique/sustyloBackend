@@ -12,18 +12,20 @@ const createFolder = (folder) => {
 createFolder("uploads/salonPhotos");
 createFolder("uploads/salonAgreements");
 createFolder("uploads/blogs");
+createFolder("uploads/profile");
 
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        console.log("📂 Saving File:", file.originalname, "Type:", file.mimetype);
         if (file.fieldname === "salonPhotos") {
             cb(null, "uploads/salonPhotos/");
         } else if (file.fieldname === "salonAgreement") {
             cb(null, "uploads/salonAgreements/");
-        } else if (file.fieldname === "blogImage") { 
-            cb(null, "uploads/blogs/");
-        } else {
+        } else if (file.fieldname === "profileImage") {
+            cb(null, "uploads/profile/");
+        } else if (file.fieldname === "blogImage") {
+            cb(null, "uploads/blogs/")
+        }else {
             cb(new Error("❌ Invalid file field: " + file.fieldname), null);
         }
     },
@@ -39,7 +41,9 @@ const fileFilter = (req, file, cb) => {
         cb(null, true);
     } else if (file.fieldname === "salonAgreement") {
         cb(null, true);
-    } else if (file.fieldname === "blogImage" && file.mimetype.startsWith("image/")) { // 🔹 Added for blogs
+    } else if (file.fieldname === "blogImage" && file.mimetype.startsWith("image/")) {
+        cb(null, true);
+    } else if (file.fieldname === "profileImage" && file.mimetype.startsWith("image/")) {
         cb(null, true);
     } else {
         cb(new Error("❌ Invalid file type: " + file.mimetype), false);
@@ -50,7 +54,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 }, 
+    limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 
@@ -73,7 +77,8 @@ const convertToJpg = async (req, res, next) => {
         };
 
         if (req.files.salonPhotos) await processImages(req.files.salonPhotos);
-        if (req.files.blogImage) await processImages(req.files.blogImage); // 🔹 Added for blog images
+        if (req.files.blogImage) await processImages(req.files.blogImage);
+        if (req.files.profileImage) await processImages(req.files.profileImage);
 
         next();
     } catch (error) {

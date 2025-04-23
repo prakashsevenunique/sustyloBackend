@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   gender: { type: String, enum: ["male", "female", "other"] },
   address: { type: String },
   wallet: { type: mongoose.Schema.Types.ObjectId, ref: "Wallet" },
+  profilePhoto: { type: String, default: "" },
   location: {
     latitude: { type: Number },
     longitude: { type: Number },

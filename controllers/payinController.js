@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 const payIn = async (req, res) => {
  
-  const {amount, reference, name, mobile, email, userId} = req.body;
+  const {amount, reference, name, mobile, email, userId,description} = req.body;
  
   if (!amount || !reference || !name || !mobile || !email || !userId) {
     return res.send("All fields are required");
@@ -35,7 +35,8 @@ const payIn = async (req, res) => {
       reference,
       name,
       mobile,
-      email
+      email,
+      description :description || "Top up transaction"
     });
 
    
@@ -176,6 +177,7 @@ const payInReportAllUsers = async (req, res) => {
           paymentGateway: 1,
           paymentMode: 1,
           status: 1,
+          description:1,
           utr: 1,
           createdAt: 1,
         },
