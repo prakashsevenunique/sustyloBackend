@@ -11,7 +11,8 @@ const {
   getTopReviewedSalons,
   addReview,
   getReviews,
-  getNearbySalonsByService
+  getNearbySalonsByService,
+  deleteSalon
 } = require("../controllers/salonController");
 
 const { upload, convertToJpg } = require("../authMiddleware/upload");
@@ -52,7 +53,7 @@ router.put(
   ]),
   updateSalonMedia
 );
-
+router.delete("/deleteSalon/:id", deleteSalon)
 router.put("/update/details/:salonId", updateSalonDetails);
 
 router.post("/review/:salonId", addReview);

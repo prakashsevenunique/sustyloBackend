@@ -64,6 +64,24 @@ exports.getSalonById = async (req, res) => {
     }
 };
 
+exports.deleteSalon = async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      const salon = await Salon.findById(id);
+      if (!salon) {
+        return res.status(404).json({ success: false, message: "Salon not found" });
+      }
+  
+      await Salon.findByIdAndDelete(id);
+  
+      res.status(200).json({ success: true, message: "Salon deleted successfully" });
+    } catch (error) {
+      console.error("Delete Salon Error:", error);
+      res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+  };
+
 
 exports.updateSalonDetails = async (req, res) => {
     try {
