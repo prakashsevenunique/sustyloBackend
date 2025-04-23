@@ -305,7 +305,7 @@ exports.cancelBooking = async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobileNumber,
-        description: `Refund for ${bookingId}}`,
+        description: `Refund for order`,
         reference: bookingId
       });
       await payInData.save();
