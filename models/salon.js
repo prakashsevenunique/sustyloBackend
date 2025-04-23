@@ -18,7 +18,28 @@ const SalonSchema = new mongoose.Schema(
         salonAddress: { type: String, required: true },
         locationMapUrl: { type: String },
 
-       
+        aadharNumber: {
+            type: String,
+            required: false,
+            unique: true,
+            validate: {
+              validator: function(v) {
+                return /^\d{12}$/.test(v);
+              },
+              message: props => `${props.value} is not a valid Aadhar number! Must be 12 digits.`
+            }
+          },
+          pancardNumber: {
+            type: String,
+            required: false,
+            unique: true,
+            validate: {
+              validator: function(v) {
+                return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v);
+              },
+              message: props => `${props.value} is not a valid PAN number! Format: ABCDE1234F`
+            }
+          },
         salonTitle: { type: String, default: "" },
         salonDescription: { type: String, default: "" },
 
