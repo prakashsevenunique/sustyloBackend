@@ -9,6 +9,7 @@ const referralService = require("../services/referralService");
 const { addReferralBonus } = require("../services/referralService");
 const Salon = require("../models/salon");
 const mongoose = require('mongoose');
+const fs = require("fs").promises;
 
 
 exports.sendOtpController = async (req, res) => {
@@ -181,7 +182,8 @@ exports.updateUserProfile = async (req, res) => {
 exports.addProfilePhoto = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!req.files) {
+
+    if (!req.files || !req.files['profileImage']) {
       return res.status(400).json({ error: "Profile photo is required" });
     }
 
@@ -190,18 +192,30 @@ exports.addProfilePhoto = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (user.profilePhoto) {
-      return res.status(400).json({ error: "Profile photo already exists. Use update API to replace it." });
-    }
+    const newPhotoPath = req.files['profileImage'][0].path;
 
-    user.profilePhoto = req.files['profileImage'][0].path;
-    await user.save();
+    // If there's an old photo, delete it
+    const deleteOldPhoto = user.profilePhoto
+      ? fs.unlink(user.profilePhoto).catch(err => {
+          console.warn("Old photo deletion warning:", err.message);
+        })
+      : Promise.resolve();
+
+    // Set the new photo path
+    user.profilePhoto = newPhotoPath;
+
+    // Save user and delete old photo in parallel
+    await Promise.all([
+      user.save(),
+      deleteOldPhoto
+    ]);
 
     res.status(200).json({
       success: true,
-      message: "Profile photo added successfully",
-      photoPath: user.profilePhoto,
+      message: "Profile photo updated successfully",
+      photoPath: newPhotoPath,
     });
+
   } catch (error) {
     console.error("Add Profile Photo Error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
