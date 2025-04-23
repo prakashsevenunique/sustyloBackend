@@ -279,38 +279,51 @@ exports.cancelUnpaidBooking = async (req, res) => {
  
 exports.cancelBooking = async (req, res) => {
     try {
-        const { bookingId } = req.params;
-
-        const booking = await Booking.findById(bookingId);
-        if (!booking) return res.status(404).json({ error: 'Booking not found' });
-        const user = await User.findById(booking.userId);
-        if (!user) return res.status(404).json({ error: 'User not found'})
-        const userWallet = await Wallet.findOne({user: booking.userId});
-        console.log("user wallet is:", userWallet);
-        
-        // Deduct amount from wallet
-        userWallet.balance += booking.totalAmount;
-        await userWallet.save();
-
-        const payInData = new PayIn({
-            userId: user._id,
-            amount: booking.totalAmount,
-            remark: "Salon Booking",
-            status: "Approved",
-            name: user.name,
-            email: user.email,
-            mobile: user.mobileNumber,
-            reference: `BOOKING-${Date.now()}`
-        });
-        await payInData.save();
-        booking.status = 'Cancelled';
-        await booking.save();
-
-        res.status(200).json({ message: 'Booking cancelled!', booking });
+      const { bookingId } = req.params;
+      const { cancelReason } = req.body; // Accept cancel reason from user input
+      if (!cancelReason) return res.status(404).json({ error: 'cancelReason not found' });
+      const booking = await Booking.findById(bookingId);
+      if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  
+      const user = await User.findById(booking.userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+  
+      const userWallet = await Wallet.findOne({ user: booking.userId });
+      console.log("user wallet is:", userWallet);
+  
+      // Refund amount to wallet
+      userWallet.balance += booking.totalAmount;
+      await userWallet.save();
+  
+      // Save refund transaction
+      const payInData = new PayIn({
+        userId: user._id,
+        amount: booking.totalAmount,
+        remark: "Salon Booking Refund",
+        status: "Approved",
+        name: user.name,
+        email: user.email,
+        mobile: user.mobileNumber,
+        reference: `BOOKING-${Date.now()}`
+      });
+      await payInData.save();
+  
+      // Update booking status and save cancel reason
+      booking.status = 'Cancelled';
+      booking.cancelReason = cancelReason || 'No reason provided'; // Optional fallback
+      await booking.save();
+  
+      res.status(200).json({ 
+        message: 'Booking cancelled!', 
+        booking 
+      });
     } catch (error) {
-        res.status(500).json({ error: 'Internal server error', details: error.message });
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        details: error.message 
+      });
     }
-};
+  };
 
 
   exports.completeBooking = async (req, res) => {
