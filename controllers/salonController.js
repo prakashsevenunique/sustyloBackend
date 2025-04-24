@@ -338,6 +338,8 @@ exports.getNearbySalons = async (req, res) => {
             // Only add regex search if search parameter exists
             if (search) {
                 query.salonName = { $regex: search, $options: "i" };
+            }
+            if (category) {
                 query.category = { $regex: category, $options: "i" };
             }
 
