@@ -73,7 +73,11 @@ const SalonSchema = new mongoose.Schema(
                 },
             ],
 
-        category: { type: String },
+            category: { 
+              type: String, 
+              enum: ["premium", "general"], 
+              required: true 
+            },
 
         bankDetails: {
             accountHolderName: { type: String, default: "" },

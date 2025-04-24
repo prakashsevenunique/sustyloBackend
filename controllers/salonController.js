@@ -276,6 +276,7 @@ exports.getNearbySalons = async (req, res) => {
             longitude,
             search,
             gender,
+            category,
             serviceTitle,
             serviceDescription,
             minRate,
@@ -337,6 +338,7 @@ exports.getNearbySalons = async (req, res) => {
             // Only add regex search if search parameter exists
             if (search) {
                 query.salonName = { $regex: search, $options: "i" };
+                query.category = { $regex: category, $options: "i" };
             }
 
             const salons = await Salon.find(query).lean();
