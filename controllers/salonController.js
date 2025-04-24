@@ -567,22 +567,40 @@ exports.addReview = async (req, res) => {
     }
 };
 
-
-
 exports.getReviews = async (req, res) => {
     try {
         const { salonId } = req.params;
 
-        const salon = await Salon.findById(salonId)
-            .select('reviews')
-            .populate('reviews.userId', 'name phone');
+        const result = await Salon.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
+            { $unwind: "$reviews" },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "reviews.userId",
+                    foreignField: "_id",
+                    as: "userDetails"
+                }
+            },
+            { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    rating: "$reviews.rating",
+                    comment: "$reviews.comment",
+                    createdAt: "$reviews.createdAt",
+                    user: {
+                        _id: "$userDetails._id",
+                        name: "$userDetails.name",
+                        phone: "$userDetails.phone"
+                    }
+                }
+            }
+        ]);
 
-        if (!salon) {
-            return res.status(404).json({ message: "Salon not found." });
-        }
-
-        res.status(200).json({ reviews: salon.reviews });
+        return res.status(200).json({ reviews: result });
     } catch (error) {
-        res.status(500).json({ message: "Failed to fetch reviews", error: error.message });
+        return res.status(500).json({ message: "Failed to fetch reviews", error: error.message });
     }
 };
+
