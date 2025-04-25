@@ -76,7 +76,7 @@ const SalonSchema = new mongoose.Schema(
     category: {
       type: String,
       enum: ["premium", "general"],
-      required: false
+      required: false 
     },
 
     bankDetails: {
