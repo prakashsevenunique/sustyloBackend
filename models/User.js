@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   mobileNumber: { type: String, required: true, unique: true },
+  salonName: { type: String, required: false },
   role: { type: String, enum: ["user", "shop_owner", "admin"], required: true },
   name: { type: String },
   email: { type: String, unique: true, sparse: true },
@@ -14,6 +15,7 @@ const userSchema = new mongoose.Schema({
     latitude: { type: Number },
     longitude: { type: Number },
   },
+  notificationToken:{type :String},
   referralCode: { type: String, unique: true }, 
   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });

@@ -54,7 +54,7 @@ exports.SalonLead = async (req, res) => {
 exports.getSalonById = async (req, res) => {
     try {
         const { id } = req.params;
-        const salon = await Salon.findById(id);
+        const salon = await Salon.findById(id).populate("salonowner");
 
         if (!salon) return res.status(404).json({ message: "Salon not found." });
 
@@ -87,7 +87,7 @@ exports.updateSalonDetails = async (req, res) => {
     try {
         const { salonId } = req.params;
         const {
-            ownerName, salonName, mobile, email, salonAddress, locationMapUrl,
+            locationMapUrl,
             salonTitle, salonDescription, socialLinks, openingHours, facilities,
             services, category, bankDetails, latitude, longitude,aadharNumber,pancardNumber
         } = req.body;
@@ -98,24 +98,24 @@ exports.updateSalonDetails = async (req, res) => {
         }
 
         // Find existing salon
-        let salon = await Salon.findById(salonId);
+        let salon = await Salon.findById(salonId).populate("salonowner");
         if (!salon) {
             return res.status(404).json({ error: "Salon not found" });
         }
 
         // Email uniqueness check
-        if (email && email !== salon.email) {
-            const existingSalon = await Salon.findOne({ email });
-            if (existingSalon) {
-                return res.status(400).json({ error: "Email already in use" });
-            }
-        }
+        // if (email && email !== salon.salonowner.email) {
+        //     const existingSalon = await Salon.findOne({ email });
+        //     if (existingSalon) {
+        //         return res.status(400).json({ error: "Email already in use" });
+        //     }
+        // }
 
         // Update salon
         salon = await Salon.findByIdAndUpdate(
             salonId,
             {
-                ownerName, salonName, mobile, email, salonAddress, locationMapUrl,
+                locationMapUrl,
                 salonTitle, salonDescription, socialLinks, openingHours, facilities,
                 category, latitude, longitude, services, bankDetails,aadharNumber,pancardNumber
             },

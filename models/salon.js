@@ -11,11 +11,12 @@ const ReviewSchema = new mongoose.Schema({
 const SalonSchema = new mongoose.Schema(
   {  
     // listBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    ownerName: { type: String, required: true },
-    salonName: { type: String, required: true },
-    mobile: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    salonAddress: { type: String, required: true },
+    salonowner: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    // ownerName: { type: String, required: true },
+    // salonName: { type: String, required: true },
+    // mobile: { type: String, required: true, unique: true },
+    // email: { type: String, required: true, unique: true },
+    // salonAddress: { type: String, required: true },
     locationMapUrl: { type: String },
 
     aadharNumber: {
