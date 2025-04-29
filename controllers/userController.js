@@ -208,9 +208,9 @@ exports.SalonLead = async (req, res) => {
   try {
     console.log("🚀 Incoming Request for Salon Registration");
 
-    const { name, email, gender, salonName, address, mobileNumber } = req.body;
+    const { name, email, salonName, address, mobileNumber } = req.body;
     console.log("req is", req.body);
-    if (!name || !email || !gender || !salonName || !address || !mobileNumber ) {
+    if (!name || !email || !salonName || !address || !mobileNumber ) {
       return res.status(400).json({ message: "All fields are required!" });
     }
 
@@ -220,7 +220,6 @@ exports.SalonLead = async (req, res) => {
       user = new User({
         name,
         email,
-        gender,
         salonName,
         address,
         mobileNumber,
