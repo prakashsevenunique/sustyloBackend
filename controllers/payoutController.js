@@ -47,6 +47,10 @@ const payOut = async (req, res) => {
 
   await newPayOut.save();
 
+  const wallet = await Wallet.findOne({user: userId});
+      wallet.balance += amount;
+      await wallet.save();
+
   return res.status(200).send({
     message: "Payment data saved successfully in the database.",
   });

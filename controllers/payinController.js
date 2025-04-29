@@ -41,6 +41,11 @@ const payIn = async (req, res) => {
 
    
     await newPayIn.save();
+
+    const wallet = await Wallet.findOne({user: userId});
+    wallet.balance += amount;
+    await wallet.save();
+
     return res
       .status(200)
       .send({

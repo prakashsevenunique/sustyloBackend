@@ -41,70 +41,76 @@ const generateReferralCode = () =>
 
 exports.verifyOTPController = async (req, res) => {
   try {
-    const { mobileNumber, otp, referralCode, role } = req.body; // 🔥 added role here
+    const { mobileNumber, otp, referralCode, role } = req.body;
 
-    if (!mobileNumber || !otp ) {
-      return res
-        .status(400)
-        .json({ message: "Mobile number, OTP are required" });
+    if (!mobileNumber || !otp) {
+      return res.status(400).json({ message: "Mobile number and OTP are required" });
     }
 
-    if(!role){
-      role = "user";
-    }
+    const userRole = role || "user";
 
-    // Verify OTP
+    // ✅ Step 1: Verify OTP
     const verificationResult = await verifyOtp(mobileNumber, otp);
     if (!verificationResult.success) {
       return res.status(400).json({ message: verificationResult.message });
     }
 
-    let user = await User.findOne({ mobileNumber, role }); // 🔥 also match role
+    // ✅ Step 2: Check if user already exists
+    let user = await User.findOne({ mobileNumber });
 
-    if (!user) {
-      // If no user exists, create new one
-      let referredByUser = null;
+    if (user) {
+      // ✅ Existing user: just generate token and return
+      const token = jwt.sign(
+        { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
+        process.env.JWT_SECRET
+      );
 
-      if (role === "user" && referralCode) {
-        // Referral code only for users
-        referredByUser = await User.findOne({ referralCode });
-        if (!referredByUser) {
-          return res.status(400).json({ message: "Invalid referral code" });
-        }
-      }
-
-      const newReferralCode =
-        role === "user"
-          ? `SALON${Math.floor(1000 + Math.random() * 9000)}`
-          : null;
-
-      user = new User({
-        mobileNumber,
-        role,
-        referralCode: newReferralCode,
-        referredBy: referredByUser ? referredByUser._id : null,
-      });
-
+      user.token = token;
       await user.save();
 
-      // Create wallet only for user
-
-      const wallet = new Wallet({
-        user: user._id,
-        balance: referredByUser ? 100 : 0,
+      return res.status(200).json({
+        message: "OTP verified successfully",
+        user,
+        token,
+        wallet: user.wallet ? await Wallet.findOne({ user: user._id }) : null,
       });
-      await wallet.save();
+    }
 
-      user.wallet = wallet._id;
-      await user.save();
+    // ✅ Step 3: New user creation logic
+    let referredByUser = null;
 
-      // Add referral bonus to referrer
-      if (referredByUser) {
-        await addReferralBonus(referredByUser._id, user._id);
+    if (userRole === "user" && referralCode) {
+      referredByUser = await User.findOne({ referralCode });
+      if (!referredByUser) {
+        return res.status(400).json({ message: "Invalid referral code" });
       }
     }
 
-    // Generate JWT token
+    const newReferralCode =
+      userRole === "user" ? `SALON${Math.floor(1000 + Math.random() * 9000)}` : null;
+
+    user = new User({
+      mobileNumber,
+      role: userRole,
+      referralCode: newReferralCode,
+      referredBy: referredByUser ? referredByUser._id : null,
+    });
+
+    await user.save();
+
+    const wallet = new Wallet({
+      user: user._id,
+      balance: referredByUser ? 100 : 0,
+    });
+    await wallet.save();
+
+    user.wallet = wallet._id;
+    await user.save();
+
+    if (referredByUser) {
+      await addReferralBonus(referredByUser._id, user._id);
+    }
+
     const token = jwt.sign(
       { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
       process.env.JWT_SECRET
@@ -117,7 +123,7 @@ exports.verifyOTPController = async (req, res) => {
       message: "OTP verified successfully",
       user,
       token,
-      wallet: user.wallet ? await Wallet.findOne({ user: user._id }) : null,
+      wallet,
     });
   } catch (error) {
     console.error("Error in verifyOTPController:", error);
