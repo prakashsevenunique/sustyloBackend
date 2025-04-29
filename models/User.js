@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ["user", "shop_owner", "admin"], required: true },
   name: { type: String },
   email: { type: String, unique: true, sparse: true },
-  gender: { type: String, enum: ["male", "female", "other"] },
+  gender: { type: String, enum: ["male", "female", "other"], required: false },
   address: { type: String },
   wallet: { type: mongoose.Schema.Types.ObjectId, ref: "Wallet" },
   profilePhoto: { type: String, default: "" },
