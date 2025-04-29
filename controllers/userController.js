@@ -43,10 +43,14 @@ exports.verifyOTPController = async (req, res) => {
   try {
     const { mobileNumber, otp, referralCode, role } = req.body; // 🔥 added role here
 
-    if (!mobileNumber || !otp || !role) {
+    if (!mobileNumber || !otp ) {
       return res
         .status(400)
-        .json({ message: "Mobile number, OTP and role are required" });
+        .json({ message: "Mobile number, OTP are required" });
+    }
+
+    if(!role){
+      role = "user";
     }
 
     // Verify OTP
