@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const Wallet = require("../models/Wallet");
+const { Wallet, WalletTransaction } = require("../models/Wallet");
 const { generateOtp, verifyOtp, sendOtp } = require("../utils/otpService");
 const bcrypt = require("bcryptjs");
 const OTP = require("../models/otpModel");
@@ -59,12 +59,10 @@ exports.verifyOTPController = async (req, res) => {
     let user = await User.findOne({ mobileNumber });
 
     if (user) {
-      // ✅ Existing user: just generate token and return
       const token = jwt.sign(
         { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
         process.env.JWT_SECRET
       );
-
       user.token = token;
       await user.save();
 
@@ -72,13 +70,12 @@ exports.verifyOTPController = async (req, res) => {
         message: "OTP verified successfully",
         user,
         token,
-        wallet: user.wallet ? await Wallet.findOne({ user: user._id }) : null,
+        wallet: await Wallet.findOne({ user: user._id }),
       });
     }
 
     // ✅ Step 3: New user creation logic
     let referredByUser = null;
-
     if (userRole === "user" && referralCode) {
       referredByUser = await User.findOne({ referralCode });
       if (!referredByUser) {
@@ -86,8 +83,7 @@ exports.verifyOTPController = async (req, res) => {
       }
     }
 
-    const newReferralCode =
-      userRole === "user" ? `SALON${Math.floor(1000 + Math.random() * 9000)}` : null;
+    const newReferralCode = userRole === "user" ? `SALON${Math.floor(1000 + Math.random() * 9000)}` : null;
 
     user = new User({
       mobileNumber,
@@ -98,19 +94,47 @@ exports.verifyOTPController = async (req, res) => {
 
     await user.save();
 
+    // ✅ Step 4: Create wallet for new user
     const wallet = new Wallet({
       user: user._id,
       balance: referredByUser ? 100 : 0,
     });
     await wallet.save();
 
+    // ✅ Step 5: Log wallet transaction if referral bonus is applied
+    if (referredByUser) {
+      await WalletTransaction.create({
+        wallet: wallet._id,
+        amount: 100,
+        type: "Credit",
+        description: "Referral Bonus (Sign-up)",
+        reference: null,
+        metadata: { referredBy: referredByUser._id }
+      });
+    }
+
     user.wallet = wallet._id;
     await user.save();
 
+    // ✅ Step 6: Credit ₹100 to referrer after referral (deferred logic for after booking, if needed)
     if (referredByUser) {
-      await addReferralBonus(referredByUser._id, user._id);
+      const referrerWallet = await Wallet.findOne({ user: referredByUser._id });
+      if (referrerWallet) {
+        referrerWallet.balance += 100;
+        await referrerWallet.save();
+
+        await WalletTransaction.create({
+          wallet: referrerWallet._id,
+          amount: 100,
+          type: "Credit",
+          description: "Referral Bonus (Friend Signed Up)",
+          reference: user._id.toString(),
+          metadata: { referredUser: user._id }
+        });
+      }
     }
 
+    // ✅ Step 7: Token Generation
     const token = jwt.sign(
       { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
       process.env.JWT_SECRET
@@ -125,6 +149,7 @@ exports.verifyOTPController = async (req, res) => {
       token,
       wallet,
     });
+
   } catch (error) {
     console.error("Error in verifyOTPController:", error);
     return res.status(500).json({ message: "Internal server error" });
