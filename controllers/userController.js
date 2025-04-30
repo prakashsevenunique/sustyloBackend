@@ -208,13 +208,13 @@ exports.SalonLead = async (req, res) => {
   try {
     console.log("🚀 Incoming Request for Salon Registration");
 
-    const { name, email,  salonName, address, mobileNumber } = req.body;
+    const { name, email, salonName, address, mobileNumber } = req.body;
     console.log("req is", req.body);
-    if (!name || !email ||  !salonName || !address || !mobileNumber ) {
+    if (!name || !email || !salonName || !address || !mobileNumber ) {
       return res.status(400).json({ message: "All fields are required!" });
     }
 
-    let user = await User.findOne({ mobileNumber}); // 🔥 also match role
+    let user = await User.findOne({ mobileNumber}); 
 
     if (!user) {
       user = new User({
@@ -228,32 +228,18 @@ exports.SalonLead = async (req, res) => {
 
       await user.save();
 
-      // Create wallet only for user
+      const salon = new Salon({
+        salonowner: user._id
+      })
 
-      const wallet = new Wallet({
-        user: user._id,
-        balance: 0,
-      });
-      await wallet.save();
-
-      user.wallet = wallet._id;
-      await user.save();
+      await salon.save();
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
-      process.env.JWT_SECRET
-    );
-
-    user.token = token;
-    await user.save();
+    
 
     return res.status(200).json({
       message: "salon data sent successfully",
-      user,
-      token,
-      wallet: user.wallet ? await Wallet.findOne({ user: user._id }) : null,
+      user
     });
   } catch (error) {
     console.error("❌ Error in SalonLead:", error);
