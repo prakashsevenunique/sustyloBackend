@@ -66,19 +66,12 @@ cron.schedule('*/300 * * * * *', async () => {
       const timeDiff = bookingTimeIST.getTime() - nowIST.getTime();
       const minutesBefore = Math.floor(timeDiff / (1000 * 60));
 
-      console.log(`Booking ID: ${booking._id}`);
-      console.log("🕒 Booking Time IST:", bookingTimeIST);
-      console.log("🕒 Current Time IST:", nowIST);
-      console.log("🕒 Minutes before booking:", minutesBefore);
-
       if (minutesBefore < 0) {
-        // Booking time is already passed
         continue;
       }
 
       // ✅ 1 hour before reminder
       if (minutesBefore <= 60 && minutesBefore >= 45 && !booking.reminder1hSent) {
-        console.log("📢 Sending 1 hour reminder SMS...");
         const msg = `Reminder: Your salon appointment at ${salon.name} is in 1 hour at ${booking.timeSlot}.`;
         await sendSMS(user.phone || user.mobileNumber, msg);
         booking.reminder1hSent = true;
@@ -86,7 +79,6 @@ cron.schedule('*/300 * * * * *', async () => {
 
       // ✅ 10 minutes before reminder
       else if (minutesBefore <= 10 && minutesBefore >= 5 && !booking.reminder10mSent) {
-        console.log("📢 Sending 10 minute reminder SMS...");
         const msg = `⏳ You're up next! Your salon appointment at ${salon.name} starts at ${booking.timeSlot}.`;
         await sendSMS(user.phone || user.mobileNumber, msg);
         booking.reminder10mSent = true;

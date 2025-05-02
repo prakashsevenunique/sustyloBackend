@@ -12,7 +12,7 @@
         getAllBookings
     } = require('../controllers/bookingController');
 
-    const { protect, authorizeRoles } = require("../authMiddleware/authMiddleware");
+    const { protect, authorizeRoles, authorizeSuperAdmin } = require("../authMiddleware/authMiddleware");
   
     router.post('/create', createBooking);
 
@@ -35,6 +35,6 @@
     router.post('/complete/:bookingId', completeBooking);
 
     router.post('/owner/complete/:bookingId', protect, authorizeRoles("owner"), ownerCompleteBooking);
-    router.get('/all', getAllBookings);
+    router.get('/all',protect,authorizeSuperAdmin , getAllBookings);
 
     module.exports = router;

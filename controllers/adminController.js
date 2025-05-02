@@ -118,9 +118,6 @@ exports.updateSalon = async (req, res) => {
         const { id } = req.params;
         const updateData = req.body;
 
-        console.log("🛠️ Updating Salon:", id);
-        console.log("Request Body:", updateData);
-
         if (updateData.mobile) {
             const existingSalon = await Salon.findOne({ mobile: updateData.mobile });
             if (existingSalon && existingSalon._id.toString() !== id) {

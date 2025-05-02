@@ -160,6 +160,11 @@ exports.updateLeadStatus = async (req, res) => {
 
                 user.wallet = wallet._id;
                 await user.save({ session });
+            } else {
+                if (user.role !== 'shop_owner') {
+                    user.role == "admin" ? user.role = "admin" : user.role = "shop_owner";
+                    await user.save({ session });
+                }
             }
 
             salon = new Salon({
@@ -199,8 +204,6 @@ exports.updateLeadStatus = async (req, res) => {
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-
-        console.error("Error in updateLeadStatus:", error);
         res.status(500).json({
             error: error.message
         });

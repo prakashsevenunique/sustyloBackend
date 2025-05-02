@@ -51,7 +51,7 @@ exports.SalonLead = async (req, res) => {
 exports.getSalonById = async (req, res) => {
     try {
         const { id } = req.params;
-        const salon = await Salon.findById(id).populate("salonowner");
+        const salon = await Salon.findById(id).populate("salonowner", "name");
 
         if (!salon) return res.status(404).json({ message: "Salon not found." });
 
@@ -63,21 +63,21 @@ exports.getSalonById = async (req, res) => {
 
 exports.deleteSalon = async (req, res) => {
     try {
-      const { id } = req.params;
-  
-      const salon = await Salon.findById(id);
-      if (!salon) {
-        return res.status(404).json({ success: false, message: "Salon not found" });
-      }
-  
-      await Salon.findByIdAndDelete(id);
-  
-      res.status(200).json({ success: true, message: "Salon deleted successfully" });
+        const { id } = req.params;
+
+        const salon = await Salon.findById(id);
+        if (!salon) {
+            return res.status(404).json({ success: false, message: "Salon not found" });
+        }
+
+        await Salon.findByIdAndDelete(id);
+
+        res.status(200).json({ success: true, message: "Salon deleted successfully" });
     } catch (error) {
-      console.error("Delete Salon Error:", error);
-      res.status(500).json({ success: false, message: "Internal Server Error" });
+        console.error("Delete Salon Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
-  };
+};
 
 exports.updateSalonDetails = async (req, res) => {
     try {
@@ -85,35 +85,24 @@ exports.updateSalonDetails = async (req, res) => {
         const {
             locationMapUrl,
             salonTitle, salonDescription, socialLinks, openingHours, facilities,
-            services, category, bankDetails, latitude, longitude,aadharNumber,pancardNumber
+            services, category, bankDetails, latitude, longitude, aadharNumber, pancardNumber
         } = req.body;
 
-        // Validate salonId
         if (!mongoose.Types.ObjectId.isValid(salonId)) {
             return res.status(400).json({ error: "Invalid Salon ID" });
         }
 
-        // Find existing salon
         let salon = await Salon.findById(salonId).populate("salonowner");
         if (!salon) {
             return res.status(404).json({ error: "Salon not found" });
         }
 
-        // Email uniqueness check
-        // if (email && email !== salon.salonowner.email) {
-        //     const existingSalon = await Salon.findOne({ email });
-        //     if (existingSalon) {
-        //         return res.status(400).json({ error: "Email already in use" });
-        //     }
-        // }
-
-        // Update salon
         salon = await Salon.findByIdAndUpdate(
             salonId,
             {
                 locationMapUrl,
                 salonTitle, salonDescription, socialLinks, openingHours, facilities,
-                category, latitude, longitude, services, bankDetails,aadharNumber,pancardNumber
+                category, latitude, longitude, services, bankDetails, aadharNumber, pancardNumber
             },
             { new: true, runValidators: true }
         );
@@ -130,40 +119,6 @@ exports.updateSalonDetails = async (req, res) => {
         });
     }
 };
-
-function extractLatLng(url) {
-    if (!url) throw new Error("Empty URL");
-
-    // Support multiple URL formats:
-    // 1. https://maps.google.com/?q=LAT,LNG
-    // 2. https://www.google.com/maps/place/@LAT,LNG
-    // 3. https://goo.gl/maps/XXXX
-
-    let lat, lng;
-
-    // Case 1: ?q=LAT,LNG
-    const qParamMatch = url.match(/[?&]q=([^&]+)/);
-    if (qParamMatch) {
-        const coords = qParamMatch[1].split(',');
-        if (coords.length === 2) {
-            lat = parseFloat(coords[0]);
-            lng = parseFloat(coords[1]);
-        }
-    }
-
-    // Case 2: /@LAT,LNG
-    if (!lat && !lng) {
-        const atParamMatch = url.match(/@([-\d.]+),([-\d.]+)/);
-        if (atParamMatch) {
-            lat = parseFloat(atParamMatch[1]);
-            lng = parseFloat(atParamMatch[2]);
-        }
-    }
-
-    if (!lat || !lng) throw new Error("Could not extract coordinates from URL");
-
-    return { latitude: lat, longitude: lng };
-}
 
 exports.updateSalonMedia = async (req, res) => {
     try {
@@ -227,23 +182,65 @@ exports.approveSalon = async (req, res) => {
 
 exports.getAllSalons = async (req, res) => {
     try {
-        const { status } = req.query;
-        let query = {};
+        const {
+            status,
+            search,
+            page = 1,
+            limit = 10,
+            sortBy = 'createdAt',
+            sortOrder = 'desc',
+        } = req.query;
+
+        const query = {};
 
         if (status) {
-            if (!["pending", "approved"].includes(status)) {
-                return res.status(400).json({ message: "Invalid status. Use 'pending' or 'approved'." });
+            const allowedStatuses = ['pending', 'approved'];
+            if (!allowedStatuses.includes(status.toLowerCase())) {
+                return res.status(400).json({
+                    message: "Invalid status. Use 'pending' or 'approved'.",
+                });
             }
-            query.status = status;
+            query.status = status.toLowerCase();
         }
 
-        const salons = await Salon.find(query);
+        if (search) {
+            const searchRegex = new RegExp(search, 'i'); // case-insensitive
+            query.$or = [
+                { salonName: searchRegex },
+                { salonAddress: searchRegex },
+            ];
+        }
 
-        res.status(200).json({ count: salons.length, salons });
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        const sortOptions = {};
+        sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+        const [salons, total] = await Promise.all([
+            Salon.find(query)
+                .populate('salonowner', 'name')
+                .sort(sortOptions)
+                .skip(skip)
+                .limit(pageSize),
+            Salon.countDocuments(query),
+        ]);
+
+        res.status(200).json({
+            total,
+            page: pageNumber,
+            totalPages: Math.ceil(total / pageSize),
+            salons,
+        });
     } catch (error) {
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
+        res.status(500).json({
+            message: 'Internal Server Error',
+            error: error.message,
+        });
     }
 };
+
 exports.getNearbySalons = async (req, res) => {
     try {
         const {
@@ -295,22 +292,14 @@ exports.getNearbySalons = async (req, res) => {
             return Math.min(...services.map(service => service.rate));
         };
 
-        // Build the base query
         const baseQuery = {
             latitude: { $exists: true, $ne: null },
             longitude: { $exists: true, $ne: null },
             status: "approved"
         };
 
-        // ... [Previous filter code remains the same until the searchWithinRadius function] ...
-
         const searchWithinRadius = async (radius) => {
-            console.log(`🔍 Searching salons within ${radius} km...`);
-
-            // Start with base query
             const query = { ...baseQuery };
-
-            // Only add regex search if search parameter exists
             if (search) {
                 query.salonName = { $regex: search, $options: "i" };
             }
@@ -320,7 +309,6 @@ exports.getNearbySalons = async (req, res) => {
 
             const salons = await Salon.find(query).lean();
 
-            // Process each salon
             const processedSalons = salons.map(salon => {
                 salon.latitude = parseFloat(salon.latitude);
                 salon.longitude = parseFloat(salon.longitude);
@@ -329,7 +317,6 @@ exports.getNearbySalons = async (req, res) => {
                 salon.averageRating = calculateAverageRating(salon.reviews);
                 salon.minServicePrice = calculateMinServicePrice(salon.services);
 
-                // Filter services based on criteria
                 if (gender || serviceTitle || serviceDescription || minRate || maxRate) {
                     salon.services = salon.services.filter(service => {
                         let matches = true;
@@ -345,7 +332,6 @@ exports.getNearbySalons = async (req, res) => {
                 return salon;
             });
 
-            // Filter salons within radius and with matching services
             let filteredSalons = processedSalons
                 .filter(salon => salon.distance <= radius)
                 .filter(salon => {
@@ -355,7 +341,6 @@ exports.getNearbySalons = async (req, res) => {
                     return true;
                 });
 
-            // Apply sorting
             filteredSalons.sort((a, b) => {
                 let comparison = 0;
 
@@ -372,16 +357,10 @@ exports.getNearbySalons = async (req, res) => {
                     default:
                         comparison = a.distance - b.distance;
                 }
-
-                // Apply sort order
                 return sortOrder === 'desc' ? -comparison : comparison;
             });
-
-            console.log(`Found ${filteredSalons.length} salons within ${radius} km`);
             return filteredSalons;
         };
-
-        // Check in increasing radius up to maxDistance
         let salons = [];
         const radiusSteps = [2, 5, maxDistance]; // Search in 2km, then 5km, then maxDistance
 
@@ -400,15 +379,12 @@ exports.getNearbySalons = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("🚨 Error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
 
 exports.getTopReviewedSalons = async (req, res) => {
     try {
-        console.log("🔍 Searching for top 5 reviewed salons by average rating...");
-
         const salons = await Salon.aggregate([
             {
                 $match: {
@@ -424,11 +400,9 @@ exports.getTopReviewedSalons = async (req, res) => {
                 $sort: { avgRating: -1 }
             },
             {
-                $limit: 10
+                $limit: 20
             }
         ]);
-
-
         if (salons.length === 0) {
             return res.status(404).json({ message: "No reviewed salons found." });
         }
@@ -496,29 +470,27 @@ exports.addReview = async (req, res) => {
     try {
         const { salonId } = req.params;
         const { rating, comment, phone } = req.body;
-        
-        const user = await User.findOne({ mobileNumber:phone });
+
+        const user = await User.findOne({ mobileNumber: phone });
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
-        
+
         const newReview = {
             userId: user._id,
             rating,
             comment,
         };
-        
+
         const updatedSalon = await Salon.findByIdAndUpdate(
             salonId,
             { $push: { reviews: newReview } },
             { new: true }
         );
-        
+
         if (!updatedSalon) {
             return res.status(404).json({ message: "Salon not found." });
         }
-        
-        // 🔄 Calculate average rating using aggregation
         const avgResult = await Salon.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
             { $unwind: "$reviews" },
@@ -529,9 +501,9 @@ exports.addReview = async (req, res) => {
                 },
             },
         ]);
-        
+
         const averageRating = avgResult.length > 0 ? avgResult[0].averageRating : 0;
-        
+
         res.status(201).json({
             message: "Review added successfully.",
             salon: updatedSalon,
@@ -545,7 +517,7 @@ exports.addReview = async (req, res) => {
 exports.getReviews = async (req, res) => {
     try {
         const { salonId } = req.params;
-        
+
         const result = await Salon.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
             { $unwind: "$reviews" },
@@ -572,10 +544,9 @@ exports.getReviews = async (req, res) => {
                 }
             }
         ]);
-        
+
         return res.status(200).json({ reviews: result });
     } catch (error) {
         return res.status(500).json({ message: "Failed to fetch reviews", error: error.message });
     }
 };
-

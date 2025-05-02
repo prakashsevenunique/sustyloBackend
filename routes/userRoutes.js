@@ -10,18 +10,17 @@ const {
   getUserInfo,
   getUserReviews,
   addProfilePhoto,
-} = require("../controllers/userController"); // ✅ Ensure correct import path
+} = require("../controllers/userController");
 
-const { protect } = require("../authMiddleware/authMiddleware"); // ✅ Correct import
+const { protect,authorizeSuperAdmin } = require("../authMiddleware/authMiddleware"); 
 const { upload } = require("../authMiddleware/upload");
 
 const router = express.Router();
-
 router.post("/send-otp", sendOtpController);
 router.post("/verify-otp", verifyOTPController);
 router.post("/update-location", updateLocation);
 router.put("/update-profile/:id", updateUserProfile);
-router.get("/get-all", getAllUsers);
+router.get("/get-all",protect,authorizeSuperAdmin , getAllUsers);
 router.get("/get/:id", getUserById);
 router.get("/referral/:userId", getReferralCode);
 router.get("/user-info", protect, getUserInfo);

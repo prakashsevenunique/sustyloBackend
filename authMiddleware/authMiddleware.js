@@ -27,8 +27,8 @@ const authorizeRoles = (...roles) => {
 
 
 const authorizeSuperAdmin = (req, res, next) => {
-    if (!req.user || req.user.role !== "super_admin") {
-        return res.status(403).json({ message: "Forbidden: Only super admins can perform this action" });
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden: Only admins can perform this action" });
     }
     next();
 };

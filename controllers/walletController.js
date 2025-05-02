@@ -65,7 +65,6 @@ exports.payWithWallet = async (req, res) => {
             return res.status(400).json({ error: "Insufficient wallet balance" });
         }
 
-        
         wallet.balance -= amount;
         wallet.transactions.push({
             type: "Debit",

@@ -166,16 +166,61 @@ exports.createBooking = async (req, res) => {
 
 exports.getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate("userId", "name email mobileNumber") // Optional: adjust fields
-      .populate("salonId", "salonName salonAddress salonPhotos");
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      paymentStatus,
+      search,
+      startDate,
+      endDate,
+    } = req.query;
 
-    res.status(200).json({ bookings });
+    const query = {};
+    if (status) {
+      query.status = status;
+    }
+    if (paymentStatus) {
+      query.paymentStatus = paymentStatus;
+    }
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = new Date(`${startDate}T00:00:00Z`);
+      }
+      if (endDate) {
+        query.date.$lte = new Date(`${endDate}T23:59:59Z`);
+      }
+    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    let bookingsQuery = Booking.find(query)
+      .populate("userId", "name email mobileNumber")
+      .populate("salonId", "salonName salonAddress salonPhotos")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    let bookings = await bookingsQuery.exec();
+
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      bookings = bookings.filter((booking) =>
+        booking.userId?.name?.match(searchRegex)
+      );
+    }
+    const totalBookings = await Booking.countDocuments(query);
+
+    res.status(200).json({
+      bookings,
+      totalBookings,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalBookings / parseInt(limit)),
+    });
   } catch (error) {
-    console.error("Error in getAllBookings:", error);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
   }
 };
 
@@ -187,7 +232,6 @@ exports.getUserBookings = async (req, res) => {
       "salonId",
       "salonName salonAddress salonTitle salonPhotos"
     );
-    console.log("booking is : ", bookings);
     res.status(200).json({ bookings });
   } catch (error) {
     res
@@ -199,15 +243,60 @@ exports.getUserBookings = async (req, res) => {
 exports.getSalonBookings = async (req, res) => {
   try {
     const { salonId } = req.params;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      paymentStatus,
+      search,
+      startDate,
+      endDate,
+    } = req.query;
 
-    const bookings = await Booking.find({ salonId: salonId }).populate(
-      "userId"
-    );
-    res.status(200).json({ bookings });
+    const query = { salonId };
+    if (status) {
+      query.status = status;
+    }
+    if (paymentStatus) {
+      query.paymentStatus = paymentStatus;
+    }
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = new Date(`${startDate}T00:00:00Z`);
+      }
+      if (endDate) {
+        query.date.$lte = new Date(`${endDate}T23:59:59Z`);
+      }
+    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    let bookingsQuery = Booking.find(query)
+      .populate({
+        path: "userId",
+        select: "name mobileNumber email",
+      })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+    let bookings = await bookingsQuery.exec();
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      bookings = bookings.filter((booking) =>
+        booking.userId?.name?.match(searchRegex)
+      );
+    }
+    const totalBookings = await Booking.countDocuments(query);
+    res.status(200).json({
+      bookings,
+      totalBookings,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalBookings / parseInt(limit)),
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
   }
 };
 
@@ -328,46 +417,39 @@ exports.cancelBooking = async (req, res) => {
           { new: true, session }
         ),
 
-        // Payment records
         new payin({
           userId: booking.userId,
-          bookingId: booking._id,
           amount: totalAmount,
           name: user.name || "User",
           mobile: user.mobileNumber || "N/A",
           email: user.email,
           status: "Approved",
-          utr: `CANCEL-USER-${timestamp}`,
+          utr: null,
           trans_mode: "wallet",
-          reference: booking._id,
           description: `Refund for cancelled booking`,
         }).save({ session }),
 
         new payout({
           userId: admin._id,
-          bookingId: booking._id,
           amount: adminCommission,
           name: admin.name || "Admin",
           mobile: admin.mobileNumber || "N/A",
           email: admin.email,
           status: "Approved",
-          utr: `CANCEL-ADMIN-${timestamp}`,
+          utr: null,
           trans_mode: "wallet",
-          reference: booking._id,
           description: `Commission reversed for cancelled booking #${booking._id}`,
         }).save({ session }),
 
         new payout({
           userId: salon.salonowner._id,
-          bookingId: booking._id,
           amount: ownerAmount,
           name: salon.name || "Salon Owner",
           mobile: salon.mobileNumber || "N/A",
           email: salon.email,
           status: "Approved",
-          utr: `CANCEL-OWNER-${timestamp}`,
+          utr: null,
           trans_mode: "wallet",
-          reference: booking._id,
           description: `Payment reversed for cancelled booking #${booking._id}`,
         }).save({ session })
       ]);
@@ -382,12 +464,9 @@ exports.cancelBooking = async (req, res) => {
         message: "Booking cancelled successfully",
         bookingId: booking._id,
         refundAmount: totalAmount,
-        newWalletBalance: updatedUserWallet.balance,
-        commissionReversed: adminCommission
       });
     });
   } catch (error) {
-    console.error("Error in cancelBooking:", error);
     const statusCode = error.message.includes("not found") ? 404 :
       error.message.includes("already") ? 400 : 500;
     res.status(statusCode).json({
@@ -426,10 +505,8 @@ exports.completeBooking = async (req, res) => {
         console.log("Referral bonus applied to referrer:", referrer._id);
       }
     }
-
     booking.status = "Completed";
     booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
-
     await booking.save();
     res
       .status(200)
@@ -439,7 +516,6 @@ exports.completeBooking = async (req, res) => {
         booking,
       });
   } catch (error) {
-    console.error("Error in completeBooking:", error);
     res
       .status(500)
       .json({ error: "Internal Server Error", details: error.message });
@@ -450,7 +526,6 @@ exports.ownerCompleteBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const salonId = req.user.salonId;
-
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ error: "Booking not found" });
 
@@ -459,10 +534,7 @@ exports.ownerCompleteBooking = async (req, res) => {
         .status(400)
         .json({ error: "Booking already marked as completed" });
     }
-
     booking.status = "Completed";
-    booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
-
     await booking.save();
 
     res.status(200).json({
@@ -470,7 +542,6 @@ exports.ownerCompleteBooking = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error("Error in ownerCompleteBooking:", error);
     res
       .status(500)
       .json({ error: "Internal Server Error", details: error.message });
