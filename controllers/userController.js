@@ -1,14 +1,10 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { Wallet, WalletTransaction } = require("../models/Wallet");
 const { generateOtp, verifyOtp, sendOtp } = require("../utils/otpService");
-const bcrypt = require("bcryptjs");
-const OTP = require("../models/otpModel");
 const crypto = require("crypto");
-const referralService = require("../services/referralService");
-const { addReferralBonus } = require("../services/referralService");
 const Salon = require("../models/salon");
 const mongoose = require("mongoose");
+const Wallet = require("../models/Wallet");
 const fs = require("fs").promises;
 
 exports.sendOtpController = async (req, res) => {
@@ -24,20 +20,16 @@ exports.sendOtpController = async (req, res) => {
 
     return smsResult.success
       ? res
-          .status(200)
-          .json({
-            message: "OTP sent successfully",
-            existing: user ? true : false,
-          })
+        .status(200)
+        .json({
+          message: "OTP sent successfully",
+          existing: user ? true : false,
+        })
       : res.status(400).json({ message: smsResult.message });
   } catch (error) {
-    console.error("Error in sendOtpController:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
-const generateReferralCode = () =>
-  crypto.randomBytes(4).toString("hex").toUpperCase();
 
 exports.verifyOTPController = async (req, res) => {
   try {
@@ -49,13 +41,11 @@ exports.verifyOTPController = async (req, res) => {
 
     const userRole = role || "user";
 
-    // ✅ Step 1: Verify OTP
     const verificationResult = await verifyOtp(mobileNumber, otp);
     if (!verificationResult.success) {
       return res.status(400).json({ message: verificationResult.message });
     }
 
-    // ✅ Step 2: Check if user already exists
     let user = await User.findOne({ mobileNumber });
 
     if (user) {
@@ -69,13 +59,12 @@ exports.verifyOTPController = async (req, res) => {
       return res.status(200).json({
         message: "OTP verified successfully",
         user,
-        token,
-        wallet: await Wallet.findOne({ user: user._id }),
+        token
       });
     }
 
-    // ✅ Step 3: New user creation logic
     let referredByUser = null;
+
     if (userRole === "user" && referralCode) {
       referredByUser = await User.findOne({ referralCode });
       if (!referredByUser) {
@@ -94,47 +83,30 @@ exports.verifyOTPController = async (req, res) => {
 
     await user.save();
 
-    // ✅ Step 4: Create wallet for new user
     const wallet = new Wallet({
       user: user._id,
       balance: referredByUser ? 100 : 0,
     });
     await wallet.save();
 
-    // ✅ Step 5: Log wallet transaction if referral bonus is applied
     if (referredByUser) {
-      await WalletTransaction.create({
-        wallet: wallet._id,
+      await PayIn.create({
+        userId: user._id,
         amount: 100,
-        type: "Credit",
-        description: "Referral Bonus (Sign-up)",
-        reference: null,
-        metadata: { referredBy: referredByUser._id }
+        reference: crypto.randomUUID(),
+        name: user.name || "Unnamed",
+        mobile: user.mobileNumber,
+        email: user.email,
+        description: "Referral Bonus",
+        status: "Approved",
+        trans_mode: "Wallet",
+        utr: null
       });
     }
 
     user.wallet = wallet._id;
     await user.save();
 
-    // ✅ Step 6: Credit ₹100 to referrer after referral (deferred logic for after booking, if needed)
-    if (referredByUser) {
-      const referrerWallet = await Wallet.findOne({ user: referredByUser._id });
-      if (referrerWallet) {
-        referrerWallet.balance += 100;
-        await referrerWallet.save();
-
-        await WalletTransaction.create({
-          wallet: referrerWallet._id,
-          amount: 100,
-          type: "Credit",
-          description: "Referral Bonus (Friend Signed Up)",
-          reference: user._id.toString(),
-          metadata: { referredUser: user._id }
-        });
-      }
-    }
-
-    // ✅ Step 7: Token Generation
     const token = jwt.sign(
       { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
       process.env.JWT_SECRET
@@ -147,7 +119,6 @@ exports.verifyOTPController = async (req, res) => {
       message: "OTP verified successfully",
       user,
       token,
-      wallet,
     });
 
   } catch (error) {
@@ -158,7 +129,6 @@ exports.verifyOTPController = async (req, res) => {
 
 exports.updateLocation = async (req, res) => {
   try {
-    console.log("Received request body:", req.body);
 
     const { mobileNumber, latitude, longitude, notificationToken } = req.body;
 
@@ -181,7 +151,6 @@ exports.updateLocation = async (req, res) => {
       user.location.latitude === latitude &&
       user.location.longitude === longitude
     ) {
-      console.log("Same location, no update needed.");
       return res.json({
         message: "Location is already up to date",
         location: user.location,
@@ -204,55 +173,10 @@ exports.updateLocation = async (req, res) => {
   }
 };
 
-exports.SalonLead = async (req, res) => {
-  try {
-    console.log("🚀 Incoming Request for Salon Registration");
-
-    const { name, email, salonName, address, mobileNumber } = req.body;
-    console.log("req is", req.body);
-    if (!name || !email || !salonName || !address || !mobileNumber ) {
-      return res.status(400).json({ message: "All fields are required!" });
-    }
-
-    let user = await User.findOne({ mobileNumber}); 
-
-    if (!user) {
-      user = new User({
-        name,
-        email,
-        salonName,
-        address,
-        mobileNumber,
-        role: "shop_owner"
-      });
-
-      await user.save();
-
-      const salon = new Salon({
-        salonowner: user._id
-      })
-
-      await salon.save();
-    }
-
-    
-
-    return res.status(200).json({
-      message: "salon data sent successfully",
-      user
-    });
-  } catch (error) {
-    console.error("❌ Error in SalonLead:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
-  }
-};
-
 exports.updateUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, gender} = req.body;
+    const { name, email, gender } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ error: "Name and email required" });
@@ -300,8 +224,8 @@ exports.addProfilePhoto = async (req, res) => {
     // If there's an old photo, delete it
     const deleteOldPhoto = user.profilePhoto
       ? fs.unlink(user.profilePhoto).catch((err) => {
-          console.warn("Old photo deletion warning:", err.message);
-        })
+        console.warn("Old photo deletion warning:", err.message);
+      })
       : Promise.resolve();
 
     // Set the new photo path
@@ -317,37 +241,6 @@ exports.addProfilePhoto = async (req, res) => {
     });
   } catch (error) {
     console.error("Add Profile Photo Error:", error);
-    res.status(500).json({ error: "Server error", details: error.message });
-  }
-};
-
-exports.updateProfilePhoto = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!req.file) {
-      return res.status(400).json({ error: "Profile photo is required" });
-    }
-
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // Delete old photo
-    if (user.profilePhoto) {
-      const oldPath = path.join(__dirname, "..", user.profilePhoto);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    user.profilePhoto = req.file.path;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Profile photo updated successfully",
-      photoPath: user.profilePhoto,
-    });
-  } catch (error) {
-    console.error("Update Profile Photo Error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
@@ -375,8 +268,37 @@ exports.getUserInfo = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().populate("wallet");
-    res.json(users);
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      role,
+      mobileNumber,
+      name,
+    } = req.query;
+
+    const filter = {};
+
+    if (role) filter.role = role;
+    if (mobileNumber) filter.mobileNumber = new RegExp(mobileNumber, "i");
+    if (name) filter.name = new RegExp(name, "i");
+
+    const users = await User.find(filter)
+      .populate("wallet")
+      .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await User.countDocuments(filter);
+
+    res.json({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
+      totalUsers: total,
+      users,
+    });
   } catch (error) {
     console.error("Get All Users Error:", error);
     res.status(500).json({ error: "Server error" });

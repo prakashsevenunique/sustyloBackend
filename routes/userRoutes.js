@@ -10,8 +10,6 @@ const {
   getUserInfo,
   getUserReviews,
   addProfilePhoto,
-  SalonLead,
-  updateProfilePhoto
 } = require("../controllers/userController"); // ✅ Ensure correct import path
 
 const { protect } = require("../authMiddleware/authMiddleware"); // ✅ Correct import
@@ -28,11 +26,9 @@ router.get("/get/:id", getUserById);
 router.get("/referral/:userId", getReferralCode);
 router.get("/user-info", protect, getUserInfo);
 router.get("/user-reviews/:userId", getUserReviews);
-router.post("/salon-lead", SalonLead);
 router.post("/user/:id/profile-photo", upload.fields([
   { name: "profileImage", maxCount: 1 },
 ]), addProfilePhoto);
-// router.put("/user/:id/profile-photo", upload.single("profilePhoto"), updateProfilePhoto);
 
 
 

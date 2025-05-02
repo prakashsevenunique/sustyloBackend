@@ -3,69 +3,66 @@ const Schema = mongoose.Schema;
 
 const payOutSchema = new mongoose.Schema(
     {
-        userId : {
-            type:Schema.Types.ObjectId,
-            ref:"User",
+        userId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
             required: true,
         },
-        amount :{
-
-            type:String,
-            required:true
-        }, 
-        reference:{
-            unique:true,
-            type:String,
-            required:false
-        }, 
-        trans_mode :{
-
-            type : String,
-            required:false,
-        },
-        account:{
-
-            type:String,
-            required:false
-        },
-        ifsc :{
-
-            type:String,
-            required:false
-        },
-        name:{
-
-            type:String,
-            required:true
-        }, 
-        mobile:{
-
-            type:String,
-            required:true
-        }, 
-        
-        description: { type: String },
-
-        email:{
-
-            type:String,
-            required:true
-        },
-        address:{
-
-            type:String,
-            required:false
-        },
-        status:{
+        amount: {
 
             type: String,
-            enum: ["Pending", "Approved", "Failed"], 
-            default: "Pending",
-            required:false
+            required: true
         },
-        txn_id:{
-            type:String,
-            required:false
+        reference: {
+            type: String,
+            required: false
+        },
+        trans_mode: {
+            type: String,
+            required: false,
+        },
+        account: {
+
+            type: String,
+            required: false
+        },
+        ifsc: {
+
+            type: String,
+            required: false
+        },
+        name: {
+
+            type: String,
+            required: true
+        },
+        mobile: {
+
+            type: String,
+            required: true
+        },
+
+        description: { type: String },
+
+        email: {
+
+            type: String,
+            required: true
+        },
+        address: {
+
+            type: String,
+            required: false
+        },
+        status: {
+            type: String,
+            enum: ["Pending", "Approved", "Failed"],
+            default: "Pending",
+            required: false
+        },
+        txn_id: {
+            type: String,
+            required: false
         },
         createdAt: {
             type: Date,
@@ -75,12 +72,12 @@ const payOutSchema = new mongoose.Schema(
             type: String,
             required: false,
         },
-        adminAction : {
+        adminAction: {
             type: String,
             required: false
         },
-        reamrk : {
-            type : String,
+        reamrk: {
+            type: String,
             required: false
         }
     }

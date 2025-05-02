@@ -6,8 +6,6 @@ const bookingSchema = new mongoose.Schema({
     date: { type: String, required: true },
     timeSlot: { type: String, required: true },
     seatNumber: { type: Number, required: true },
-
-    
     services: [
         {
             name: { type: String, required: true },
@@ -18,24 +16,17 @@ const bookingSchema = new mongoose.Schema({
             gender: { type: String, enum: ["male", "female", "unisex"], required: true },
         }
     ],
-
-   
+    refundAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     totalDuration: { type: String, required: true },
 
     status: { type: String, enum: ["Pending", "Confirmed", "Cancelled", "Completed"], default: "Pending" },
     paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
 
-    cancelReason: { type: String, default: 'unknown' },
-    bookingHistory: [
-        {
-            status: String,
-            changedAt: { type: Date, default: Date.now }
-        }
-    ],
-reminder1hSent: { type: Boolean, default: false },
-reminder10mSent: { type: Boolean, default: false },
-// reminderOnConfirmSent: { type: Boolean, default: false },
+    cancelReason: { type: String },
+
+    reminder1hSent: { type: Boolean, default: false },
+    reminder10mSent: { type: Boolean, default: false },
 
 }, { timestamps: true });
 

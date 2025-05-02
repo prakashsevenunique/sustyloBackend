@@ -27,7 +27,6 @@ const payIn = async (req, res) => {
       },
     }
   );
-  console.log(payInData.data);
   if (payInData.data) {
     const newPayIn = new PayIn({
       userId: new mongoose.Types.ObjectId(userId), 
@@ -61,73 +60,26 @@ const payIn = async (req, res) => {
 const callbackPayIn = async (req, res) => {
   try {
     const data = req.body;
-    console.log("data in callback request: ", data);
     const payin = await PayIn.findOne({ reference: data.reference });
-
     if (!payin) {
       return res.status(404).json({ message: "Transaction not found" });
     }
-
     if (data.status === "Success") {
-     
       const userWallet = await Wallet.findOne({user: payin.userId});
-      console.log("user wallet is:", userWallet);
-
-
       payin.status = "Approved";
-
       payin.utr = data.utr;
       await payin.save();
-
       userWallet.balance += payin.amount;
         await userWallet.save();
-
       return res.status(200).json({ message: "PayIn successful", payin });
     }
-
-   
     payin.status = "Failed";
     await payin.save();
-
     return res.status(400).json({ message: "Payment Failed", payin });
   } catch (error) {
-    console.error("Error in callback response", error);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
-
-// const callbackPayIn = async (req, res) => {
-//   try {
-//     const data = req.body;
-//     console.log("data in callback request: ", data);
-//     const payin = await PayIn.findOne({ reference: data.reference });
-
-//     if (!payin) {
-//       return res.status(404).json({ message: "Transaction not found" });
-//     }
-
-//     if (data.status === "Success") {
-     
-     
-//       payin.status = "Approved";
-//       payin.utr = data.utr;
-//       await payin.save();
-
-     
-
-//       return res.status(200).json({ message: "PayIn successful", payin });
-//     }
-
-   
-//     payin.status = "Failed";
-//     await payin.save();
-
-//     return res.status(400).json({ message: "Payment Failed", payin });
-//   } catch (error) {
-//     console.error("Error in callback response", error);
-//     return res.status(500).json({ message: "Something went wrong" });
-//   }
-// };
 
 const getPayInRes = async (req, res) =>{
   const {reference} = req.query;
@@ -160,7 +112,6 @@ const payInReportAllUsers = async (req, res) => {
       };
     }
 
-    
     const payIns = await PayIn.aggregate([
       { $match: filter },
       {

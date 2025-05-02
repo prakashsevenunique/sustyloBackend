@@ -26,27 +26,27 @@ const sendOtp = async (mobileNumber, otp) => {
       numbers: mobileNumber,
     };
 
-    console.log("📤 Sending OTP with Params:", params); 
 
     const response = await axios.post("https://www.fast2sms.com/dev/bulkV2", params, {
       headers: { authorization: apiKey }, 
     });
 
-    console.log("✅ Fast2SMS Response:", response.data);
-
     if (response.data.return) {
-     
-      await OTP.create({ mobileNumber, otp, createdAt: new Date() });
+
+      await OTP.findOneAndUpdate(
+        { mobileNumber },                 
+        { $set: { otp, createdAt: new Date() } },  
+        { upsert: true, new: true }         
+      );
+      // await OTP.create({ mobileNumber, otp, createdAt: new Date() });
       return { success: true, message: "OTP sent successfully" };
     } else {
       return { success: false, message: response.data.message || "Failed to send OTP" };
     }
   } catch (error) {
     if (error.response) {
-      console.error("❌ Error in sendOtp - Response Error:", error.response.data);
       return { success: false, message: error.response.data.message || "Failed to send OTP" };
     } else {
-      console.error("❌ Error in sendOtp - General Error:", error.message);
       return { success: false, message: "Error sending OTP" };
     }
   }

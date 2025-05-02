@@ -23,7 +23,6 @@ const payOut = async (req, res) => {
     return res.status(400).send("All fields are required");
   }
 
-  // ✅ Check if a payout with the same reference already exists
   const existingPayout = await PayOut.findOne({ reference });
   if (existingPayout) {
     return res.status(409).send({
@@ -42,14 +41,14 @@ const payOut = async (req, res) => {
     mobile,
     email,
     address,
-    description :description || "paid for order"
+    description: description || "paid for order"
   });
 
   await newPayOut.save();
 
-  const wallet = await Wallet.findOne({user: userId});
-      wallet.balance += amount;
-      await wallet.save();
+  const wallet = await Wallet.findOne({ user: userId });
+  wallet.balance += amount;
+  await wallet.save();
 
   return res.status(200).send({
     message: "Payment data saved successfully in the database.",
@@ -59,7 +58,6 @@ const payOut = async (req, res) => {
 const adminAction = async (req, res) => {
   const { action, reference } = req.body;
   const payout = await PayOut.findOne({ reference });
-  console.log("szdxfcgv", payout);
   if (!payout) {
     return res.status(404).send("No payout transaction found");
   }
@@ -78,19 +76,6 @@ const adminAction = async (req, res) => {
       mobile,
       address,
     } = payout;
-
-    console.log(
-      "dfcgvhbhnjmkcv",
-      amount,
-      reference,
-      trans_mode,
-      account,
-      ifsc,
-      name,
-      email,
-      mobile,
-      address
-    );
 
     try {
       const payOutData = await axios.post(
@@ -113,13 +98,11 @@ const adminAction = async (req, res) => {
           },
         }
       );
-      console.log("wertyui", payOutData.data);
       return res.status(200).send({
         data: payOutData.data,
         message: "Payment data saved successfully in the database.",
       });
     } catch (error) {
-      console.error("Error calling external payout service:", error);
       return res
         .status(500)
         .send("Internal server error while calling external payout service");
@@ -133,9 +116,8 @@ const adminAction = async (req, res) => {
 };
 
 const callbackPayout = async (req, res) => {
-  console.log("callback reqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", req.body);
   try {
-    const {status, reference,utr} = req.query;
+    const { status, reference, utr } = req.query;
     const payout = await PayOut.findOne({ reference });
 
     if (!payout) {

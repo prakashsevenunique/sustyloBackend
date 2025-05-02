@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const ReviewSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   rating: { type: Number, required: true, min: 0, max: 5 },
@@ -9,14 +8,12 @@ const ReviewSchema = new mongoose.Schema({
 });
 
 const SalonSchema = new mongoose.Schema(
-  {  
-    // listBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    salonowner: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    // ownerName: { type: String, required: true },
-    // salonName: { type: String, required: true },
-    // mobile: { type: String, required: true, unique: true },
-    // email: { type: String, required: true, unique: true },
-    // salonAddress: { type: String, required: true },
+  {
+    salonowner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    salonName: { type: String, required: true },
+    mobile: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    salonAddress: { type: String, required: true },
     locationMapUrl: { type: String },
 
     aadharNumber: {
@@ -43,24 +40,15 @@ const SalonSchema = new mongoose.Schema(
     },
     salonTitle: { type: String, default: "" },
     salonDescription: { type: String, default: "" },
-
-
     latitude: { type: Number, default: null },
     longitude: { type: Number, default: null },
-
-
     salonPhotos: [{ type: String }],
     salonAgreement: { type: String, default: "" },
-
-
     socialLinks: {
       facebook: { type: String, default: "" },
       instagram: { type: String, default: "" },
       youtube: { type: String, default: "" },
     },
-
-
-
     openingHours: {},
     facilities: [{ type: String }],
     services: [
@@ -73,13 +61,12 @@ const SalonSchema = new mongoose.Schema(
         gender: { type: String, enum: ["male", "female", "unisex"], required: true },
       },
     ],
-
     category: {
       type: String,
       enum: ["premium", "general"],
-      required: false
+      required: false,
+      default: "general",
     },
-
     bankDetails: {
       accountHolderName: { type: String, default: "" },
       accountNumber: { type: String, default: "" },
@@ -87,13 +74,22 @@ const SalonSchema = new mongoose.Schema(
       bankName: { type: String, default: "" },
       branchName: { type: String, default: "" },
     },
-
     status: { type: String, enum: ["pending", "approved"], default: "pending" },
-    rating: [ReviewSchema],
+    rating: { type: Number, default: 0 },
     reviews: [ReviewSchema],
   },
   { timestamps: true }
 );
+
+SalonSchema.pre('save', function (next) {
+  if (this.reviews && this.reviews.length > 0) {
+    const total = this.reviews.reduce((acc, curr) => acc + curr.rating, 0);
+    this.rating = total / this.reviews.length;
+  } else {
+    this.rating = 0;
+  }
+  next();
+});
 
 
 module.exports = mongoose.model("Salon", SalonSchema);

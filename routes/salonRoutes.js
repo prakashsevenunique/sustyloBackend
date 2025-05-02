@@ -20,31 +20,14 @@ const { protect, authorizeRoles, authorizeSuperAdmin } = require("../authMiddlew
 
 
 router.post("/lead", SalonLead);
-
-
 router.put("/approve/:salonId", protect, authorizeSuperAdmin, approveSalon);
-
-
-
 router.get("/all", getAllSalons);
-
-
 router.get("/nearby", getNearbySalons);
-
-
 router.get("/view/:id", getSalonById);
-
-
 router.get("/mostreview", getTopReviewedSalons);
-
-
 router.get("/review/:salonId", getReviews);
-
-
 router.get("/nearby", getNearbySalonsByService);
 
-
-// New separated update routes
 router.put(
   "/update/media/:salonId",
   upload.fields([
@@ -55,7 +38,6 @@ router.put(
 );
 router.delete("/deleteSalon/:id", deleteSalon)
 router.put("/update/details/:salonId", updateSalonDetails);
-
 router.post("/review/:salonId", addReview);
 
 module.exports = router;

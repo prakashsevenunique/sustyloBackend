@@ -2,137 +2,82 @@ const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 const Salon = require("../models/salon");
 const User = require("../models/User");
-const { Wallet, WalletTransaction } = require("../models/Wallet");
 const referralService = require("../services/referralService");
 const Commission = require("../models/commissionModel");
+const Wallet = require("../models/Wallet");
+const payout = require("../models/payout");
+const payin = require("../models/payin");
 
-
-// let cachedAdminId = null;
-
-// async function getAdminId(session) {
-//   if (!cachedAdminId) {
-//     const admin = await User.findOne({ role: "admin" }).session(session).select("_id");
-//     cachedAdminId = admin?._id;
-//   }
-//   return cachedAdminId;
-// }
 
 exports.createBooking = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
 
   try {
-    const { salonId, userId, date, timeSlot, seatNumber, services } = req.body;
+    await session.withTransaction(async () => {
+      const { salonId, userId, date, timeSlot, seatNumber, services } = req.body;
+      const timestamp = Date.now();
 
-    // Validate input fields
-    if (!salonId || !userId || !date || !timeSlot || !seatNumber || 
-        !services || !Array.isArray(services) || services.length === 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "All fields and at least one service are required" });
-    }
-
-    // Check seat availability
-    const existingBooking = await Booking.findOne({
-      salonId,
-      date,
-      timeSlot,
-      seatNumber,
-      status: { $in: ["Confirmed", "Pending"] },
-    }).session(session).lean();
-
-    if (existingBooking) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "This seat is already booked for the selected time slot" });
-    }
-
-    // Calculate total amount and duration
-    let totalAmount = 0;
-    let totalMinutes = 0;
-
-    services.forEach((service) => {
-      const effectiveRate = service.discount
-        ? service.price - (service.price * service.discount) / 100
-        : service.price;
-      totalAmount += effectiveRate;
-
-      const matches = service.duration.match(
-        /(\d+)\s*hr[s]?\s*(\d+)?\s*min[s]?|(\d+)\s*min[s]?/i
-      );
-      if (matches) {
-        totalMinutes += matches[1] 
-          ? parseInt(matches[1]) * 60 + (parseInt(matches[2])) || 0
-          : parseInt(matches[3]) || 0;
+      if (!salonId || !userId || !date || !timeSlot || !seatNumber || !services?.length) {
+        throw new Error("All fields and at least one service are required");
       }
-    });
 
-    // Fetch admin, user, and salon data
-    const [admin, user, salon] = await Promise.all([
-      User.findOne({ role: "admin" }).session(session).select("_id name mobileNumber email"),
-      User.findById(userId).session(session),
-      Salon.findById(salonId).session(session).populate("salonowner"),
-    ]);
+      const [existingBooking, admin, user, salon] = await Promise.all([
+        Booking.findOne({
+          salonId,
+          date,
+          timeSlot,
+          seatNumber,
+          status: { $in: ["Confirmed", "Pending"] },
+        }).session(session).lean(),
+        User.findOne({ role: "admin" }).session(session).select("_id name mobileNumber email"),
+        User.findById(userId).session(session),
+        Salon.findById(salonId).session(session)
+      ]);
 
-    if (!admin || !user || !salon) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ error: "Admin, user, or salon not found" });
-    }
+      if (existingBooking) throw new Error("This seat is already booked for the selected time slot");
+      if (!admin || !user || !salon) throw new Error("User, salon, or admin not found");
 
-    // Atomic balance check and update for user wallet
-    const userWalletUpdate = await Wallet.findOneAndUpdate(
-      { user: userId, balance: { $gte: totalAmount } },
-      { $inc: { balance: -totalAmount } },
-      { new: true, session }
-    );
+      const { totalAmount, totalMinutes } = services.reduce((acc, service) => {
+        const effectiveRate = service.discount ?
+          service.price - (service.price * service.discount) / 100 :
+          service.price;
+        acc.totalAmount += effectiveRate;
 
-    if (!userWalletUpdate) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "Insufficient wallet balance" });
-    }
+        const matches = service.duration.match(/(\d+)\s*hr[s]?\s*(\d+)?\s*min[s]?|(\d+)\s*min[s]?/i);
+        if (matches) {
+          acc.totalMinutes += matches[1] ?
+            parseInt(matches[1]) * 60 + (parseInt(matches[2]) || 0) :
+            parseInt(matches[3]) || 0;
+        }
+        return acc;
+      }, { totalAmount: 0, totalMinutes: 0 });
 
-    // Get commission
-    const commission = await Commission.findOne({
-      userId: userId,
-      serviceType: "booking",
-      minAmount: { $lte: totalAmount },
-      maxAmount: { $gte: totalAmount },
-    }).session(session).lean();
+      const durationString = `${Math.floor(totalMinutes / 60) > 0 ? Math.floor(totalMinutes / 60) + " hr " : ""}${totalMinutes % 60} min`;
 
-    if (!commission) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "No commission package configured for user" });
-    }
+      // Checkcommission
+      const commission = await Commission.findOne({
+        userId: salon.salonowner,
+        serviceType: "booking"
+      }).session(session);
 
-    const adminCommission = commission.type === "percentage" 
-      ? Math.round((totalAmount * commission.commission) / 100 * 100) / 100
-      : commission.commission;
-    const ownerAmount = totalAmount - adminCommission;
+      if (!commission) throw new Error("No commission package configured for user");
 
-    // Process wallet updates
-    const [adminWalletUpdate, salonOwnerWalletUpdate] = await Promise.all([
-      Wallet.findOneAndUpdate(
-        { user: admin._id },
-        { $inc: { balance: adminCommission } },
+      // Process wallet transaction
+      const userWalletUpdate = await Wallet.findOneAndUpdate(
+        { user: userId, balance: { $gte: totalAmount } },
+        { $inc: { balance: -totalAmount } },
         { new: true, session }
-      ),
-      Wallet.findOneAndUpdate(
-        { user: salonId}, // Assuming salon has a `userId` field
-        { $inc: { balance: ownerAmount } },
-        { new: true, session }
-      )
-    ]);
+      );
+      if (!userWalletUpdate) throw new Error("Insufficient wallet balance");
 
-    // Create transaction records
-    const bookingId = new mongoose.Types.ObjectId();
-    const timestamp = Date.now();
+      // Calculate commissions
+      const adminCommission = commission.type === "percentage" ?
+        Math.round((totalAmount * commission.commission) / 100) :
+        commission.commission;
+      const ownerAmount = totalAmount - adminCommission;
 
-    const [savedBooking] = await Promise.all([
-      new Booking({
-        _id: bookingId,
+      // Create booking
+      const savedBooking = await new Booking({
         salonId,
         userId,
         date,
@@ -140,70 +85,82 @@ exports.createBooking = async (req, res) => {
         seatNumber,
         services,
         totalAmount,
-        totalDuration: `${Math.floor(totalMinutes / 60) > 0 ? Math.floor(totalMinutes / 60) + " hr " : ""}${totalMinutes % 60} min`,
+        totalDuration: durationString,
         status: "Confirmed",
         paymentStatus: "Paid",
-        commissionDetails: {
+      }).save({ session });
+
+      // Process all transactions
+      await Promise.all([
+        // Payment records
+        new payout({
+          userId,
+          bookingId: savedBooking._id,
+          amount: totalAmount,
+          name: user.name || "User",
+          mobile: user.mobileNumber || "N/A",
+          email: user.email,
+          status: "Approved",
+          utr: null,
+          trans_mode: "wallet",
+          reference: savedBooking._id,
+          description: `Paid for booking`,
+        }).save({ session }),
+
+        new payin({
+          userId: salon.salonowner,  // Fixed: was salonId.salonowner
+          bookingId: savedBooking._id,
+          amount: ownerAmount,
+          name: salon.name || "Salon Owner",
+          mobile: salon.mobileNumber || "N/A",
+          email: salon.email,
+          status: "Approved",
+          utr: null,
+          trans_mode: "wallet",
+          description: `Payment received for booking #${savedBooking._id}`,
+        }).save({ session }),
+
+        new payin({
+          userId: admin._id,
+          bookingId: savedBooking._id,
           amount: adminCommission,
-          rate: commission.commission,
-          type: commission.type
-        },
-        bookingHistory: [{
-          status: "Confirmed",
-          changedAt: new Date(),
-          note: "Payment completed via wallet",
-        }],
-      }).save({ session }),
-      new PayOut({
-        userId,
-        amount: totalAmount,
-        name: user.name,
-        mobile: user.mobileNumber,
-        email: user.email,
-        status: "Approved",
-        utr: `BOOKING-USER-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session }),
-      new PayIn({
-        userId: salonId,
-        amount: ownerAmount,
-        name: salon.name,
-        mobile: salon.mobileNumber,
-        email: salon.email,
-        status: "Approved",
-        utr: `BOOKING-OWNER-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session }),
-      new PayIn({
-        userId: admin._id,
-        amount: adminCommission,
-        name: admin.name,
-        mobile: admin.mobileNumber,
-        email: admin.email,
-        status: "Approved",
-        utr: `BOOKING-ADMIN-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session })
-    ]);
+          name: admin.name || "Admin",
+          mobile: admin.mobileNumber || "N/A",
+          email: admin.email,
+          status: "Approved",
+          utr: null,
+          trans_mode: "wallet",
+          description: `Commission for booking #${savedBooking._id}`,
+        }).save({ session }),
 
-    // Commit transaction
-    await session.commitTransaction();
-    session.endSession();
+        // Wallet updates
+        Wallet.findOneAndUpdate(
+          { user: admin._id },
+          { $inc: { balance: adminCommission } },
+          { new: true, session }
+        ),
+        Wallet.findOneAndUpdate(
+          { user: salon.salonowner },
+          { $inc: { balance: ownerAmount } },
+          { new: true, session }
+        )
+      ]);
 
-    res.status(201).json({
-      message: "Booking confirmed successfully",
-      bookingId: savedBooking._id,
-      newWalletBalance: userWalletUpdate.balance,
-      commissionDeducted: adminCommission,
+      res.status(201).json({
+        message: "Booking confirmed successfully",
+        bookingId: savedBooking._id,
+        newWalletBalance: userWalletUpdate.balance,
+        duration: durationString
+      });
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("Error in createBooking:", error);
-    res.status(500).json({ 
-      error: "Internal server error",
-      details: process.env.NODE_ENV === "development" ? error.message : undefined
-    });
+    const statusCode = error.message.includes("not found") ? 404 :
+      error.message.includes("already booked") ? 400 :
+        error.message.includes("Insufficient") ? 400 : 500;
+    res.status(statusCode).json({ error: error.message });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -311,159 +268,133 @@ exports.cancelUnpaidBooking = async (req, res) => {
 
 exports.cancelBooking = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    const { bookingId } = req.params;
-    const { cancelReason } = req.body;
+    await session.withTransaction(async () => {
+      const { bookingId } = req.params;
+      const { cancelReason } = req.body;
 
-    // Validate input
-    if (!cancelReason) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "Cancel reason is required" });
-    }
+      if (!cancelReason) {
+        throw new Error("Cancel reason is required");
+      }
 
-    // Fetch booking, admin, user, and salon in parallel
-    const [booking, admin] = await Promise.all([
-      Booking.findById(bookingId).session(session),
-      User.findOne({ role: "admin" }).session(session).select("_id name mobileNumber email"),
-    ]);
+      const [booking, admin] = await Promise.all([
+        Booking.findById(bookingId).session(session),
+        User.findOne({ role: "admin" }).session(session).select("_id name mobileNumber email"),
+      ]);
 
-    if (!booking) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ error: "Booking not found" });
-    }
+      if (!booking) throw new Error("Booking not found");
+      if (booking.status === "Cancelled") throw new Error("Booking is already cancelled");
 
-    if (booking.status === "Cancelled") {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: "Booking is already cancelled" });
-    }
+      const [user, salon] = await Promise.all([
+        User.findById(booking.userId).session(session),
+        Salon.findById(booking.salonId).populate('salonowner').session(session),
+      ]);
 
-    const [user, salon] = await Promise.all([
-      User.findById(booking.userId).session(session),
-      Salon.findById(booking.salonId).populate('salonowner').session(session),
-    ]);
+      const [userWallet, salonOwnerWallet, adminWallet, commission] = await Promise.all([
+        Wallet.findOne({ user: booking.userId }).session(session),
+        Wallet.findOne({ user: salon.salonowner._id }).session(session),
+        Wallet.findOne({ user: admin._id }).session(session),
+        Commission.findOne({
+          userId: salon.salonowner._id,
+          serviceType: "booking"
+        }).session(session)
+      ]);
 
-    // Get all required data in parallel
-    const [userWallet, salonOwnerWallet, adminWallet, commission] = await Promise.all([
-      Wallet.findOne({ user: booking.userId }).session(session),
-      Wallet.findOne({ user: salon.userId._id }).session(session), // Use salon.userId
-      Wallet.findOne({ user: admin._id }).session(session),
-      Commission.findOne({
-        userId: booking.salonId,
-        serviceType: "booking",
-        minAmount: { $lte: booking.totalAmount },
-        maxAmount: { $gte: booking.totalAmount },
-      }).session(session)
-    ]);
+      if (!userWallet || !salonOwnerWallet || !adminWallet || !commission) {
+        throw new Error(!commission ? "No commission package configured" : "Required wallet records not found");
+      }
 
-    // Validate all required records
-    if (!userWallet || !salonOwnerWallet || !adminWallet || !commission) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ 
-        error: "Required records not found",
-        details: !commission ? "No commission package configured" : undefined
+      const totalAmount = booking.totalAmount;
+      const adminCommission = commission.type === "percentage"
+        ? Math.round((totalAmount * commission.commission) / 100 * 100) / 100
+        : commission.commission;
+      const ownerAmount = totalAmount - adminCommission;
+
+      const timestamp = Date.now();
+      const [updatedUserWallet, updatedAdminWallet, updatedSalonWallet] = await Promise.all([
+        Wallet.findOneAndUpdate(
+          { _id: userWallet._id },
+          { $inc: { balance: totalAmount } },
+          { new: true, session }
+        ),
+        Wallet.findOneAndUpdate(
+          { _id: adminWallet._id },
+          { $inc: { balance: -adminCommission } },
+          { new: true, session }
+        ),
+        Wallet.findOneAndUpdate(
+          { _id: salonOwnerWallet._id },
+          { $inc: { balance: -ownerAmount } },
+          { new: true, session }
+        ),
+
+        // Payment records
+        new payin({
+          userId: booking.userId,
+          bookingId: booking._id,
+          amount: totalAmount,
+          name: user.name || "User",
+          mobile: user.mobileNumber || "N/A",
+          email: user.email,
+          status: "Approved",
+          utr: `CANCEL-USER-${timestamp}`,
+          trans_mode: "wallet",
+          reference: booking._id,
+          description: `Refund for cancelled booking`,
+        }).save({ session }),
+
+        new payout({
+          userId: admin._id,
+          bookingId: booking._id,
+          amount: adminCommission,
+          name: admin.name || "Admin",
+          mobile: admin.mobileNumber || "N/A",
+          email: admin.email,
+          status: "Approved",
+          utr: `CANCEL-ADMIN-${timestamp}`,
+          trans_mode: "wallet",
+          reference: booking._id,
+          description: `Commission reversed for cancelled booking #${booking._id}`,
+        }).save({ session }),
+
+        new payout({
+          userId: salon.salonowner._id,
+          bookingId: booking._id,
+          amount: ownerAmount,
+          name: salon.name || "Salon Owner",
+          mobile: salon.mobileNumber || "N/A",
+          email: salon.email,
+          status: "Approved",
+          utr: `CANCEL-OWNER-${timestamp}`,
+          trans_mode: "wallet",
+          reference: booking._id,
+          description: `Payment reversed for cancelled booking #${booking._id}`,
+        }).save({ session })
+      ]);
+
+      booking.status = "Cancelled";
+      booking.paymentStatus = "Paid";
+      booking.cancelReason = cancelReason;
+      booking.refundAmount = totalAmount;
+      await booking.save({ session });
+
+      res.status(200).json({
+        message: "Booking cancelled successfully",
+        bookingId: booking._id,
+        refundAmount: totalAmount,
+        newWalletBalance: updatedUserWallet.balance,
+        commissionReversed: adminCommission
       });
-    }
-
-    const totalAmount = booking.totalAmount;
-    const adminCommission = commission.type === "percentage" 
-      ? Math.round((totalAmount * commission.commission) / 100 * 100) / 100
-      : commission.commission;
-    const ownerAmount = totalAmount - adminCommission;
-
-    // Atomic wallet updates
-    const timestamp = Date.now();
-    const [updatedUserWallet, updatedAdminWallet, updatedSalonWallet] = await Promise.all([
-      Wallet.findOneAndUpdate(
-        { _id: userWallet._id },
-        { $inc: { balance: totalAmount } },
-        { new: true, session }
-      ),
-      Wallet.findOneAndUpdate(
-        { _id: adminWallet._id },
-        { $inc: { balance: -adminCommission } },
-        { new: true, session }
-      ),
-      Wallet.findOneAndUpdate(
-        { _id: salonOwnerWallet._id },
-        { $inc: { balance: -ownerAmount } },
-        { new: true, session }
-      )
-    ]);
-
-    // Prepare transactions with unique UTRs
-    const [userPayIn, adminPayOut, ownerPayOut] = await Promise.all([
-      new PayIn({
-        userId: booking.userId,
-        amount: totalAmount,
-        name: user.name,
-        mobile: user.mobileNumber,
-        email: user.email,
-        status: "Approved",
-        utr: `CANCEL-USER-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session }),
-      new PayOut({
-        userId: admin._id,
-        amount: adminCommission,
-        name: admin.name,
-        mobile: admin.mobileNumber,
-        email: admin.email,
-        status: "Approved",
-        utr: `CANCEL-ADMIN-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session }),
-      new PayOut({
-        userId: salon.userId._id,
-        amount: ownerAmount,
-        name: salon.name,
-        mobile: salon.mobileNumber,
-        email: salon.email,
-        status: "Approved",
-        utr: `CANCEL-OWNER-${timestamp}`,
-        trans_mode: "wallet",
-      }).save({ session })
-    ]);
-
-    // Update booking
-    booking.status = "Cancelled";
-    booking.paymentStatus = "Refunded";
-    booking.cancelReason = cancelReason;
-    booking.refundAmount = totalAmount;
-    booking.commissionReversed = adminCommission;
-    booking.bookingHistory.push({
-      status: "Cancelled",
-      changedAt: new Date(),
-      note: `Booking cancelled: ${cancelReason}. Amount refunded: ${totalAmount}`
     });
-
-    await booking.save({ session });
-
-    // Commit transaction
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({
-      message: "Booking cancelled successfully",
-      bookingId: booking._id,
-      refundAmount: totalAmount,
-      newWalletBalance: updatedUserWallet.balance,
-      commissionReversed: adminCommission
-    });
-
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("Error in cancelBooking:", error);
-    res.status(500).json({ 
-      error: "Internal server error",
-      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    const statusCode = error.message.includes("not found") ? 404 :
+      error.message.includes("already") ? 400 : 500;
+    res.status(statusCode).json({
+      error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 };
 

@@ -7,8 +7,6 @@ const jwt = require("jsonwebtoken");
 
 exports.SalonLead = async (req, res) => {
     try {
-        console.log("🚀 Incoming Request for Salon Registration");
-        console.log("Request Body:", req.body);
 
         const { ownerName, salonName, mobile, email, salonAddress } = req.body;
 
@@ -50,7 +48,6 @@ exports.SalonLead = async (req, res) => {
     }
 };
 
-
 exports.getSalonById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -81,7 +78,6 @@ exports.deleteSalon = async (req, res) => {
       res.status(500).json({ success: false, message: "Internal Server Error" });
     }
   };
-
 
 exports.updateSalonDetails = async (req, res) => {
     try {
@@ -128,7 +124,6 @@ exports.updateSalonDetails = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Update error:", error);
         res.status(500).json({
             error: "Server error",
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -136,8 +131,6 @@ exports.updateSalonDetails = async (req, res) => {
     }
 };
 
-
-// Improved coordinate extraction
 function extractLatLng(url) {
     if (!url) throw new Error("Empty URL");
 
@@ -175,7 +168,6 @@ function extractLatLng(url) {
 exports.updateSalonMedia = async (req, res) => {
     try {
         const { salonId } = req.params;
-        console.log("📌 Update Salon Media API hit with Salon ID:", salonId);
 
         if (!mongoose.Types.ObjectId.isValid(salonId)) {
             return res.status(400).json({ error: "Invalid Salon ID" });
@@ -204,10 +196,8 @@ exports.updateSalonMedia = async (req, res) => {
             { new: true }
         );
 
-        console.log("✅ Salon Media Updated Successfully:", salon);
         res.status(200).json({ message: "Salon media updated successfully", salon });
     } catch (error) {
-        console.error("🚨 Error updating salon media:", error);
         res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 };
@@ -232,21 +222,6 @@ exports.approveSalon = async (req, res) => {
     } catch (error) {
         console.error("❌ Error approving salon:", error);
         res.status(500).json({ message: "Error approving salon", error: error.message });
-    }
-};
-
-exports.updateShopOwner = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, email, phone, status } = req.body;
-
-        const owner = await User.findByIdAndUpdate(id, { name, email, phone, status }, { new: true });
-
-        if (!owner) return res.status(404).json({ success: false, message: "Shop Owner not found" });
-
-        res.json({ success: true, message: "Shop Owner updated successfully!", owner });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Error updating shop owner", error: error.message });
     }
 };
 
@@ -449,11 +424,10 @@ exports.getTopReviewedSalons = async (req, res) => {
                 $sort: { avgRating: -1 }
             },
             {
-                $limit: 5
+                $limit: 10
             }
         ]);
 
-        console.log(`🟢 Found ${salons.length} top rated salons`);
 
         if (salons.length === 0) {
             return res.status(404).json({ message: "No reviewed salons found." });
@@ -462,11 +436,9 @@ exports.getTopReviewedSalons = async (req, res) => {
         res.status(200).json({ count: salons.length, salons });
 
     } catch (error) {
-        console.error("🚨 Error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };
-
 
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     function deg2rad(deg) {
@@ -520,33 +492,32 @@ exports.getNearbySalonsByService = async (req, res) => {
     }
 };
 
-
 exports.addReview = async (req, res) => {
     try {
         const { salonId } = req.params;
         const { rating, comment, phone } = req.body;
-
+        
         const user = await User.findOne({ mobileNumber:phone });
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
-
+        
         const newReview = {
             userId: user._id,
             rating,
             comment,
         };
-
+        
         const updatedSalon = await Salon.findByIdAndUpdate(
             salonId,
             { $push: { reviews: newReview } },
             { new: true }
         );
-
+        
         if (!updatedSalon) {
             return res.status(404).json({ message: "Salon not found." });
         }
-
+        
         // 🔄 Calculate average rating using aggregation
         const avgResult = await Salon.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
@@ -558,9 +529,9 @@ exports.addReview = async (req, res) => {
                 },
             },
         ]);
-
+        
         const averageRating = avgResult.length > 0 ? avgResult[0].averageRating : 0;
-
+        
         res.status(201).json({
             message: "Review added successfully.",
             salon: updatedSalon,
@@ -574,7 +545,7 @@ exports.addReview = async (req, res) => {
 exports.getReviews = async (req, res) => {
     try {
         const { salonId } = req.params;
-
+        
         const result = await Salon.aggregate([
             { $match: { _id: new mongoose.Types.ObjectId(salonId) } },
             { $unwind: "$reviews" },
@@ -601,7 +572,7 @@ exports.getReviews = async (req, res) => {
                 }
             }
         ]);
-
+        
         return res.status(200).json({ reviews: result });
     } catch (error) {
         return res.status(500).json({ message: "Failed to fetch reviews", error: error.message });

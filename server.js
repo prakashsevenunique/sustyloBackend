@@ -2,10 +2,9 @@ const express = require("express");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const morgan = require("morgan");
 const errorHandler = require("./authMiddleware/errorMiddleware");
 const userRoutes = require("./routes/userRoutes");
-const adminRoutes = require("./routes/adminRoutes"); 
+const adminRoutes = require("./routes/adminRoutes");
 const salonRoutes = require("./routes/salonRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes.js");
@@ -20,21 +19,20 @@ dotenv.config();
 
 const mainWalletRoutes = require("./routes/mainWallatRoute.js");
 
-
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected Successfully"))
     .catch((err) => {
         console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1); 
+        process.exit(1);
     });
 
-
+require('./services/bookingReminderCron');
 const app = express();
 const path = require("path");
 app.use(express.json());
 app.use(cors('*'));
-app.use(morgan("dev"));
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ✅ Reliable
 
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -47,17 +45,8 @@ app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/subscribe", subscriberRoutes);
 app.use("/api", getInTouchRoutes);
-
-require('./services/bookingReminderCron');
-
-console.log("✅ Registered Routes:");
-app._router.stack.forEach((r) => {
-    if (r.route && r.route.path) {
-        console.log(`${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
-    }
-});
-
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ✅ Reliable
+app.use("/api/lead", require("./routes/leadRoutes.js"));
+app.use("/api/commission", require("./routes/commissionRoutes.js"));    
 
 app.get("/", (req, res) => {
     res.send("Welcome to the API. Server is running!");

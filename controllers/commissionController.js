@@ -1,55 +1,63 @@
-const commission = require("../models/commissionModel");
+const Commission = require("../models/commissionModel.js"); // Adjust path if needed
 
-// Create a package
-const createCommissionPackage = async (req, res) => {
+// CREATE
+exports.createCommission = async (req, res) => {
   try {
-    const data = await commission.create(req.body);
-    res.status(201).json(data);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    const commission = new Commission(req.body);
+    await commission.save();
+    res.status(201).json({ message: "Commission created", data: commission });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Get all
-const getCommissionPackages = async (req, res) => {
-  const data = await commission.find();
-  res.json(data);
+// READ ALL (with optional filter)
+exports.getAllCommissions = async (req, res) => {
+  try {
+    const { userId, serviceType } = req.query;
+    const filter = {};
+    if (userId) filter.userId = userId;
+    if (serviceType) filter.serviceType = serviceType;
+
+    const commissions = await Commission.find(filter);
+    res.status(200).json(commissions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-// Apply Commission (main flow)
-const applyCommission = async (req, res) => {
-  const { userId, amount, serviceType } = req.body;
-
-  const pkg = await commission.findOne({
-    serviceType,
-    minAmount: { $lte: amount },
-    maxAmount: { $gte: amount }
-  });
-
-  if (!pkg) return res.status(404).json({ error: 'No package found' });
-
-  const isPercent = pkg.type === 'percentage';
-  const calc = (value) => isPercent ? (value / 100) * amount : value;
-
-  const charge = calc(pkg.charges);
-  const adminCommission = calc(pkg.commission);
-  const distributorCommission = calc(pkg.distributorCommission);
-  const gst = calc(pkg.gst);
-  const tds = calc(pkg.tds);
-
-  const totalDeduction = charge + adminCommission + distributorCommission + gst + tds;
-  const finalAmount = amount - totalDeduction;
-
-  res.json({
-    userReceives: finalAmount,
-    adminGets: charge + adminCommission + gst,
-    distributorGets: distributorCommission,
-    breakdown: { charge, commission: adminCommission, distributorCommission, gst, tds }
-  });
+// READ ONE
+exports.getCommissionById = async (req, res) => {
+  try {
+    const commission = await Commission.findById(req.params.id);
+    if (!commission) return res.status(404).json({ message: "Commission not found" });
+    res.status(200).json(commission);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 };
 
-module.exports = {
-  createCommissionPackage,
-  getCommissionPackages,
-  applyCommission
+// UPDATE
+exports.updateCommission = async (req, res) => {
+  try {
+    const updated = await Commission.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) return res.status(404).json({ message: "Commission not found" });
+    res.status(200).json({ message: "Updated successfully", data: updated });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// DELETE
+exports.deleteCommission = async (req, res) => {
+  try {
+    const deleted = await Commission.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Commission not found" });
+    res.status(200).json({ message: "Deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
