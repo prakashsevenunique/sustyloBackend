@@ -258,7 +258,7 @@ exports.getUserInfo = async (req, res) => {
     }
     let salon = null;
     if (user.role === "shop_owner") {
-      salon = await Salon.findOne({ salonowner: user._id });
+      salon = await Salon.findOne({ salonowner: user._id }).populate("salonowner");
     }
 
     return res.status(200).json({
