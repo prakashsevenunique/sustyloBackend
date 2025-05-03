@@ -210,6 +210,56 @@ exports.updateLeadStatus = async (req, res) => {
     }
 };
 
+exports.updateSalonMedia = async (req, res) => {
+    try {
+      const { userId } = req.params;
+  
+      // Validate userId
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ error: "Invalid User ID" });
+      }
+  
+      // Get User
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Get associated salon
+      let salon = await Salon.findOne({ salonowner: user._id });
+      if (!salon) {
+        return res.status(404).json({ error: "Salon not found for this user" });
+      }
+  
+      let salonPhotos = salon.salonPhotos || [];
+      let salonAgreement = salon.salonAgreement || "";
+  
+      if (req.files && req.files["salonPhotos"]) {
+        salonPhotos = req.files["salonPhotos"].map((file) => file.path);
+      }
+  
+      if (req.files && req.files["salonAgreement"]) {
+        salonAgreement = req.files["salonAgreement"][0].path;
+      }
+  
+      salon = await Salon.findByIdAndUpdate(
+          salon._id,
+        { salonPhotos, salonAgreement },
+        { new: true }
+      );
+  
+      res
+        .status(200)
+        .json({ message: "Salon media updated successfully", salon });
+    } catch (error) {
+      console.error("❌ Error updating salon media:", error);
+      res.status(500).json({
+        error: "Internal Server Error",
+        details: error.message,
+      });
+    }
+  };
+
 exports.deleteLead = async (req, res) => {
     try {
         const lead = await SalonLead.findByIdAndDelete(req.params.id);
