@@ -210,7 +210,6 @@ const allUserWallet = async() => {
         totalAvailableBalance: 0
       });
  
-      // Return both the individual data and the total summary
       return {
         finalData,
         totalSummary

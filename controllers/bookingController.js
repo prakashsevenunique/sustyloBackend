@@ -7,6 +7,8 @@ const Commission = require("../models/commissionModel");
 const Wallet = require("../models/Wallet");
 const payout = require("../models/payout");
 const payin = require("../models/payin");
+const { sendPushNotification } = require("../utils/pushNotification");
+const { handleReferralReward, cancelReferralReward } = require("../utils/firstOrderReferal");
 
 
 exports.createBooking = async (req, res) => {
@@ -15,7 +17,6 @@ exports.createBooking = async (req, res) => {
   try {
     await session.withTransaction(async () => {
       const { salonId, userId, date, timeSlot, seatNumber, services } = req.body;
-      const timestamp = Date.now();
 
       if (!salonId || !userId || !date || !timeSlot || !seatNumber || !services?.length) {
         throw new Error("All fields and at least one service are required");
@@ -54,7 +55,6 @@ exports.createBooking = async (req, res) => {
 
       const durationString = `${Math.floor(totalMinutes / 60) > 0 ? Math.floor(totalMinutes / 60) + " hr " : ""}${totalMinutes % 60} min`;
 
-      // Checkcommission
       const commission = await Commission.findOne({
         userId: salon.salonowner,
         serviceType: "booking"
@@ -92,14 +92,13 @@ exports.createBooking = async (req, res) => {
 
       // Process all transactions
       await Promise.all([
-        // Payment records
         new payout({
           userId,
           bookingId: savedBooking._id,
           amount: totalAmount,
           name: user.name || "User",
           mobile: user.mobileNumber || "N/A",
-          email: user.email,
+          email: user.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -113,7 +112,7 @@ exports.createBooking = async (req, res) => {
           amount: ownerAmount,
           name: salon.name || "Salon Owner",
           mobile: salon.mobileNumber || "N/A",
-          email: salon.email,
+          email: salon.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -126,7 +125,7 @@ exports.createBooking = async (req, res) => {
           amount: adminCommission,
           name: admin.name || "Admin",
           mobile: admin.mobileNumber || "N/A",
-          email: admin.email,
+          email: admin.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -145,7 +144,15 @@ exports.createBooking = async (req, res) => {
           { new: true, session }
         )
       ]);
-
+      if (user.notificationToken) {
+        sendPushNotification(user.notificationToken, "Booking Confirmed", `Your booking at ${salon.salonName} is confirmed for ${date} at ${timeSlot}.`, {
+          "id": savedBooking._id,
+          "type": "booking",
+        });
+      }
+      if(user.referredBy) {
+        handleReferralReward(savedBooking);
+      }
       res.status(201).json({
         message: "Booking confirmed successfully",
         bookingId: savedBooking._id,
@@ -154,7 +161,6 @@ exports.createBooking = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error("Error in createBooking:", error);
     const statusCode = error.message.includes("not found") ? 404 :
       error.message.includes("already booked") ? 400 :
         error.message.includes("Insufficient") ? 400 : 500;
@@ -309,9 +315,6 @@ exports.confirmBooking = async (req, res) => {
 
     booking.status = "Confirmed";
     booking.paymentStatus = "Paid";
-
-    booking.bookingHistory.push({ status: "Confirmed", changedAt: new Date() });
-
     await booking.save();
     res
       .status(200)
@@ -332,11 +335,6 @@ exports.cancelUnpaidBooking = async (req, res) => {
     if (booking.paymentStatus === "Pending") {
       booking.status = "Cancelled";
       booking.paymentStatus = "Failed";
-
-      booking.bookingHistory.push({
-        status: "Cancelled",
-        changedAt: new Date(),
-      });
 
       await booking.save();
       res
@@ -422,7 +420,7 @@ exports.cancelBooking = async (req, res) => {
           amount: totalAmount,
           name: user.name || "User",
           mobile: user.mobileNumber || "N/A",
-          email: user.email,
+          email: user.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -434,7 +432,7 @@ exports.cancelBooking = async (req, res) => {
           amount: adminCommission,
           name: admin.name || "Admin",
           mobile: admin.mobileNumber || "N/A",
-          email: admin.email,
+          email: admin.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -446,7 +444,7 @@ exports.cancelBooking = async (req, res) => {
           amount: ownerAmount,
           name: salon.name || "Salon Owner",
           mobile: salon.mobileNumber || "N/A",
-          email: salon.email,
+          email: salon.email || "N/A",
           status: "Approved",
           utr: null,
           trans_mode: "wallet",
@@ -460,6 +458,15 @@ exports.cancelBooking = async (req, res) => {
       booking.refundAmount = totalAmount;
       await booking.save({ session });
 
+      if (user.notificationToken) {
+        sendPushNotification(user.notificationToken, "Book Cancelled", `Your booking at ${salon.salonName} is Cancelled for ${booking?.date} at ${booking?.timeSlot}.`, {
+          "id": math.random().toString(36).substring(2, 15),
+          "type": "appointment",
+        });
+      }
+      if(user.referredBy) {
+        cancelReferralReward(savedBooking);
+      }
       res.status(200).json({
         message: "Booking cancelled successfully",
         bookingId: booking._id,
@@ -467,6 +474,7 @@ exports.cancelBooking = async (req, res) => {
       });
     });
   } catch (error) {
+    console.log (error)
     const statusCode = error.message.includes("not found") ? 404 :
       error.message.includes("already") ? 400 : 500;
     res.status(statusCode).json({
@@ -502,12 +510,17 @@ exports.completeBooking = async (req, res) => {
 
         referrerWallet.balance += 100;
         await referrerWallet.save();
-        console.log("Referral bonus applied to referrer:", referrer._id);
       }
     }
     booking.status = "Completed";
-    booking.bookingHistory.push({ status: "Completed", changedAt: new Date() });
     await booking.save();
+
+    if (user.notificationToken) {
+      sendPushNotification(user.notificationToken, "Booking Completed", `Your booking at ${booking.salonId} is completed.`, {
+        "id": booking._id,
+        "type": "booking",
+      });
+    }
     res
       .status(200)
       .json({

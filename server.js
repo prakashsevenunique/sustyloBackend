@@ -45,6 +45,7 @@ app.use("/api", contactRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/subscribe", subscriberRoutes);
 app.use("/api", getInTouchRoutes);
+app.use("/dashboard", require("./routes/dashboardRoutes.js"));
 app.use("/api/lead", require("./routes/leadRoutes.js"));
 app.use("/api/commission", require("./routes/commissionRoutes.js"));    
 

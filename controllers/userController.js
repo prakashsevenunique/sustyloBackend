@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const Salon = require("../models/salon");
 const mongoose = require("mongoose");
 const Wallet = require("../models/Wallet");
+const payin = require("../models/payin");
 const fs = require("fs").promises;
 
 exports.sendOtpController = async (req, res) => {
@@ -90,13 +91,13 @@ exports.verifyOTPController = async (req, res) => {
     await wallet.save();
 
     if (referredByUser) {
-      await PayIn.create({
+      await payin.create({
         userId: user._id,
         amount: 100,
         reference: crypto.randomUUID(),
         name: user.name || "Unnamed",
-        mobile: user.mobileNumber,
-        email: user.email,
+        mobile: user.mobileNumber || "N/A",
+        email: user.email || "N/A",
         description: "Referral Bonus",
         status: "Approved",
         trans_mode: "Wallet",
@@ -255,10 +256,15 @@ exports.getUserInfo = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    let salon = null;
+    if (user.role === "shop_owner") {
+      salon = await Salon.findOne({ salonowner: user._id });
+    }
 
     return res.status(200).json({
       message: "User details fetched successfully",
       user,
+      salon
     });
   } catch (error) {
     console.error("Error in getUserInfo:", error);
@@ -300,7 +306,6 @@ exports.getAllUsers = async (req, res) => {
       users,
     });
   } catch (error) {
-    console.error("Get All Users Error:", error);
     res.status(500).json({ error: "Server error" });
   }
 };

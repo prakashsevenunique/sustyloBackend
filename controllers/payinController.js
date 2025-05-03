@@ -38,7 +38,6 @@ const payIn = async (req, res) => {
       description :description || "Top up transaction"
     });
 
-   
     await newPayIn.save();
 
     const wallet = await Wallet.findOne({user: userId});
