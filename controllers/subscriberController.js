@@ -86,7 +86,7 @@ exports.sendNotification = async (req, res) => {
 
     const subscribers = await Subscriber.find({});
     const emails = subscribers.map(sub => sub.email);
-
+    
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {

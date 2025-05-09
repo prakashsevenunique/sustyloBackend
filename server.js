@@ -3,6 +3,8 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const errorHandler = require("./authMiddleware/errorMiddleware");
+const admin = require("firebase-admin");
+const serviceAccount = require("./utils/sustylo-firebase-adminsdk-fbsvc-73c7320882.json");
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const salonRoutes = require("./routes/salonRoutes");
@@ -47,10 +49,15 @@ app.use("/api/subscribe", subscriberRoutes);
 app.use("/api", getInTouchRoutes);
 app.use("/dashboard", require("./routes/dashboardRoutes.js"));
 app.use("/api/lead", require("./routes/leadRoutes.js"));
-app.use("/api/commission", require("./routes/commissionRoutes.js"));    
+app.use("/api/commission", require("./routes/commissionRoutes.js"));
 
 app.get("/", (req, res) => {
     res.send("Welcome to the API. Server is running!");
+});
+
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
 });
 
 app.use(errorHandler);

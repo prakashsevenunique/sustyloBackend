@@ -38,6 +38,9 @@ exports.createBooking = async (req, res) => {
       if (existingBooking) throw new Error("This seat is already booked for the selected time slot");
       if (!admin || !user || !salon) throw new Error("User, salon, or admin not found");
 
+      let salonowner = await User.findById(salon.salonowner).session(session)
+      if (!salonowner) throw new Error("Salon owner not found");
+
       const { totalAmount, totalMinutes } = services.reduce((acc, service) => {
         const effectiveRate = service.discount ?
           service.price - (service.price * service.discount) / 100 :
@@ -60,9 +63,6 @@ exports.createBooking = async (req, res) => {
         serviceType: "booking"
       }).session(session);
 
-      if (!commission) throw new Error("No commission package configured for user");
-
-      // Process wallet transaction
       const userWalletUpdate = await Wallet.findOneAndUpdate(
         { user: userId, balance: { $gte: totalAmount } },
         { $inc: { balance: -totalAmount } },
@@ -71,9 +71,10 @@ exports.createBooking = async (req, res) => {
       if (!userWalletUpdate) throw new Error("Insufficient wallet balance");
 
       // Calculate commissions
-      const adminCommission = commission.type === "percentage" ?
-        Math.round((totalAmount * commission.commission) / 100) :
-        commission.commission;
+
+      const adminCommission = commission?.type === "percentage" ?
+        Math.round((totalAmount * commission?.commission) / 100) :
+        commission?.commission;
       const ownerAmount = totalAmount - adminCommission;
 
       // Create booking
@@ -109,7 +110,7 @@ exports.createBooking = async (req, res) => {
         new payin({
           userId: salon.salonowner,  // Fixed: was salonId.salonowner
           bookingId: savedBooking._id,
-          amount: ownerAmount,
+          amount: commission ? ownerAmount : 0,
           name: salon.name || "Salon Owner",
           mobile: salon.mobileNumber || "N/A",
           email: salon.email || "N/A",
@@ -122,7 +123,7 @@ exports.createBooking = async (req, res) => {
         new payin({
           userId: admin._id,
           bookingId: savedBooking._id,
-          amount: adminCommission,
+          amount: commission ? adminCommission : 0,
           name: admin.name || "Admin",
           mobile: admin.mobileNumber || "N/A",
           email: admin.email || "N/A",
@@ -135,12 +136,12 @@ exports.createBooking = async (req, res) => {
         // Wallet updates
         Wallet.findOneAndUpdate(
           { user: admin._id },
-          { $inc: { balance: adminCommission } },
+          { $inc: { balance: adminCommission || 0 } },
           { new: true, session }
         ),
         Wallet.findOneAndUpdate(
           { user: salon.salonowner },
-          { $inc: { balance: ownerAmount } },
+          { $inc: { balance: ownerAmount || 0 } },
           { new: true, session }
         )
       ]);
@@ -150,7 +151,13 @@ exports.createBooking = async (req, res) => {
           "type": "booking",
         });
       }
-      if(user.referredBy) {
+      if (salonowner.notificationToken) {
+        sendPushNotification(salonowner.notificationToken, "New Booking", `You have a new booking at ${salon.salonName} for ${date} at ${timeSlot}.`, {
+          "id": savedBooking._id, "type": "booking"
+        });
+      }
+
+      if (user.referredBy) {
         handleReferralReward(savedBooking);
       }
       res.status(201).json({
@@ -161,6 +168,7 @@ exports.createBooking = async (req, res) => {
       });
     });
   } catch (error) {
+    console.log("Error in createBooking:", error);
     const statusCode = error.message.includes("not found") ? 404 :
       error.message.includes("already booked") ? 400 :
         error.message.includes("Insufficient") ? 400 : 500;
@@ -378,23 +386,23 @@ exports.cancelBooking = async (req, res) => {
       ]);
 
       const [userWallet, salonOwnerWallet, adminWallet, commission] = await Promise.all([
-        Wallet.findOne({ user: booking.userId }).session(session),
-        Wallet.findOne({ user: salon.salonowner._id }).session(session),
-        Wallet.findOne({ user: admin._id }).session(session),
+        Wallet.findOne({ user: booking?.userId }).session(session),
+        Wallet.findOne({ user: salon?.salonowner._id }).session(session),
+        Wallet.findOne({ user: admin?._id }).session(session),
         Commission.findOne({
-          userId: salon.salonowner._id,
+          userId: salon?.salonowner._id,
           serviceType: "booking"
         }).session(session)
       ]);
 
-      if (!userWallet || !salonOwnerWallet || !adminWallet || !commission) {
+      if (!userWallet || !salonOwnerWallet || !adminWallet) {
         throw new Error(!commission ? "No commission package configured" : "Required wallet records not found");
       }
 
       const totalAmount = booking.totalAmount;
-      const adminCommission = commission.type === "percentage"
-        ? Math.round((totalAmount * commission.commission) / 100 * 100) / 100
-        : commission.commission;
+      const adminCommission = commission?.type === "percentage"
+        ? Math.round((totalAmount * commission?.commission) / 100 * 100) / 100
+        : commission?.commission;
       const ownerAmount = totalAmount - adminCommission;
 
       const timestamp = Date.now();
@@ -406,12 +414,12 @@ exports.cancelBooking = async (req, res) => {
         ),
         Wallet.findOneAndUpdate(
           { _id: adminWallet._id },
-          { $inc: { balance: -adminCommission } },
+          { $inc: { balance: -adminCommission || 0 } },
           { new: true, session }
         ),
         Wallet.findOneAndUpdate(
           { _id: salonOwnerWallet._id },
-          { $inc: { balance: -ownerAmount } },
+          { $inc: { balance: -ownerAmount || 0 } },
           { new: true, session }
         ),
 
@@ -429,7 +437,7 @@ exports.cancelBooking = async (req, res) => {
 
         new payout({
           userId: admin._id,
-          amount: adminCommission,
+          amount: adminCommission || 0,
           name: admin.name || "Admin",
           mobile: admin.mobileNumber || "N/A",
           email: admin.email || "N/A",
@@ -441,7 +449,7 @@ exports.cancelBooking = async (req, res) => {
 
         new payout({
           userId: salon.salonowner._id,
-          amount: ownerAmount,
+          amount: ownerAmount || 0,
           name: salon.name || "Salon Owner",
           mobile: salon.mobileNumber || "N/A",
           email: salon.email || "N/A",
@@ -460,11 +468,12 @@ exports.cancelBooking = async (req, res) => {
 
       if (user.notificationToken) {
         sendPushNotification(user.notificationToken, "Book Cancelled", `Your booking at ${salon.salonName} is Cancelled for ${booking?.date} at ${booking?.timeSlot}.`, {
-          "id": math.random().toString(36).substring(2, 15),
+          "id": Math.random().toString(36).substring(2, 15),
           "type": "appointment",
         });
       }
-      if(user.referredBy) {
+
+      if (user.referredBy) {
         cancelReferralReward(savedBooking);
       }
       res.status(200).json({
@@ -474,7 +483,6 @@ exports.cancelBooking = async (req, res) => {
       });
     });
   } catch (error) {
-    console.log (error)
     const statusCode = error.message.includes("not found") ? 404 :
       error.message.includes("already") ? 400 : 500;
     res.status(statusCode).json({
