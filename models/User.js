@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: true },
   notificationToken: { type: String },
   referralCode: { type: String, unique: true },
-  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
 });
 
 userSchema.pre('save', async function (next) {

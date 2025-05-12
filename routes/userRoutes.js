@@ -10,6 +10,7 @@ const {
   getUserInfo,
   getUserReviews,
   addProfilePhoto,
+  deleteUser,
 } = require("../controllers/userController");
 
 const { protect,authorizeSuperAdmin } = require("../authMiddleware/authMiddleware"); 
@@ -28,6 +29,8 @@ router.get("/user-reviews/:userId", getUserReviews);
 router.post("/user/:id/profile-photo", upload.fields([
   { name: "profileImage", maxCount: 1 },
 ]), addProfilePhoto);
+
+router.delete('/me', protect, deleteUser);
 
 
 
