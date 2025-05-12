@@ -96,9 +96,6 @@ exports.verifyOTPController = async (req, res) => {
         { userId: user._id, mobileNumber: user.mobileNumber, role: user.role },
         process.env.JWT_SECRET
       );
-      user.token = token;
-      await user.save();
-
       return res.status(200).json({
         message: "OTP verified successfully",
         user,

@@ -32,6 +32,4 @@ router.post("/user/:id/profile-photo", upload.fields([
 
 router.delete('/me', protect, deleteUser);
 
-
-
 module.exports = router;
