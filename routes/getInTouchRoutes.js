@@ -2,10 +2,17 @@ const express = require("express");
 const router = express.Router();
 const {
   addGetInTouch,
-  getAllGetInTouch
+  getAllGetInTouch,
+  markGetInTouchResolved // ✅ Add this controller
 } = require("../controllers/getInTouchController");
 
-router.post("/get-in-touch", addGetInTouch);        // User form submission
-router.get("/get-in-touch", getAllGetInTouch);      // Admin fetches all
+// User form submission
+router.post("/get-in-touch", addGetInTouch);
+
+// Admin fetches all entries
+router.get("/get-in-touch", getAllGetInTouch);
+
+// ✅ Mark a specific entry as resolved
+router.patch("/get-in-touch/resolve/:id", markGetInTouchResolved);
 
 module.exports = router;

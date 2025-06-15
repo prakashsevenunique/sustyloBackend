@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
 
-
+    
 const createFolder = (folder) => {
     if (!fs.existsSync(folder)) {
         fs.mkdirSync(folder, { recursive: true });

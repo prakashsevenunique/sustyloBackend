@@ -13,7 +13,14 @@ exports.addGetInTouch = async (req, res) => {
       return res.status(400).json({ message: "Type must be either 'user' or 'salonOwner'" });
     }
 
-    const newEntry = new GetInTouch({ name, email, mobile, type });
+    const newEntry = new GetInTouch({
+      name,
+      email,
+      mobile,
+      type,
+      status: 'unresolved' // default status
+    });
+
     await newEntry.save();
 
     res.status(200).json({ message: "Submitted successfully", data: newEntry });
@@ -31,7 +38,8 @@ exports.getAllGetInTouch = async (req, res) => {
     const type = req.query.type; // Optional filter: user or salonOwner
 
     // Build dynamic query object
-    let query = {};
+    let query = { status: "unresolved" }; // Show only unresolved entries
+
     if (type) {
       query.type = type;
     }
@@ -48,6 +56,26 @@ exports.getAllGetInTouch = async (req, res) => {
       totalEntries: total,
       data: entries
     });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.markGetInTouchResolved = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedEntry = await GetInTouch.findByIdAndUpdate(
+      id,
+      { status: 'resolved' },
+      { new: true }
+    );
+
+    if (!updatedEntry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    res.status(200).json({ message: "Marked as resolved", data: updatedEntry });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

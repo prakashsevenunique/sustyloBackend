@@ -16,6 +16,7 @@ const contactRoutes = require("./routes/contactRoutes");
 const blogRoutes = require("./routes/blogRoutes.js");
 const subscriberRoutes = require("./routes/subscriberRoutes");
 const getInTouchRoutes = require("./routes/getInTouchRoutes");
+const shareAppLinkRoutes = require("./routes/shareAppLinkRoutes.js");
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api", getInTouchRoutes);
 app.use("/dashboard", require("./routes/dashboardRoutes.js"));
 app.use("/api/lead", require("./routes/leadRoutes.js"));
 app.use("/api/commission", require("./routes/commissionRoutes.js"));
+app.use("/api", shareAppLinkRoutes);
 
 app.get("/", (req, res) => {
     res.send("Welcome to the API. Server is running!");

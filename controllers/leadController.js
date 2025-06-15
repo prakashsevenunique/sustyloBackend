@@ -7,8 +7,8 @@ const mongoose = require("mongoose");
 exports.createLead = async (req, res) => {
     try {
         const {
-            salonName,
             salonOwnerName,
+            salonName,
             mobileNumber,
             email,
             address

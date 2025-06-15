@@ -8,6 +8,11 @@ const getInTouchSchema = new mongoose.Schema({
     type: String,
     enum: ["user", "salonOwner"],
     required: true
+  },
+  status: {
+    type: String,
+    enum: ["unresolved", "resolved"],
+    default: "unresolved"
   }
 }, { timestamps: true });
 
