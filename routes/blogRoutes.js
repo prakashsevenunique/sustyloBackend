@@ -9,25 +9,27 @@ const {
   deleteBlog,
   getBlogsByCategory,
   postComment,
-  getCommentsByBlogId,
+  getApprovedCommentsByBlogId,
+  getAllCommentsByBlogId,
   approveComment,
-  replyToComment
+  replyToComment,
+  rejectComment,
 } = require("../controllers/blogController");
 
-// 📌 Blog CRUD Routes
+// Blog routes
 router.post("/createBlog", createBlog);
 router.get("/all", getAllBlogs);
 router.get("/:id", getBlogById);
 router.put("/update/:id", updateBlog);
 router.delete("/delete/:id", deleteBlog);
-
-// 📌 Blog Category Filter
 router.get("/blogs/category/:category", getBlogsByCategory);
 
-// 📌 Comment Routes
-router.post("/:blogId/comments", postComment);
-router.get("/:blogId/comments", getCommentsByBlogId);
-router.put("/comments/:commentId/approve", approveComment);
-router.post("/comments/:commentId/reply", replyToComment);
+// Comment routes
+router.post("/:blogId/comments", postComment); // Add comment
+router.get("/comment/:blogId", getAllCommentsByBlogId); // All comments
+router.get("/comments/approved/:blogId", getApprovedCommentsByBlogId);
+router.post("/comments/:commentId/reply", replyToComment); 
+router.post("/comments/:commentId/approve", approveComment);
+router.delete("/comment/:commentId/reject", rejectComment);
 
 module.exports = router;

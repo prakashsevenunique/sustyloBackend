@@ -18,9 +18,10 @@ const SalonLeadBasicSchema = new mongoose.Schema(
     address: { type: String, required: true },
     status: {
       type: String,
-      enum: ["new", "contacted", "reviewed","approved", "rejected"],
+      enum: ["new", "contacted", "reviewed", "approved", "rejected"],
       default: "new"
-    }
+    },
+    count: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

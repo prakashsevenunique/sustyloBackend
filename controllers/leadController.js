@@ -32,6 +32,15 @@ exports.createLead = async (req, res) => {
     }
 };
 
+exports.getLeadCount = async (req, res) => {
+  try {
+    const totalLeads = await SalonLead.countDocuments();
+    res.status(200).json({ totalLeads });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getAllLeads = async (req, res) => {
     try {
         const {

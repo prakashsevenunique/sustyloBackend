@@ -218,20 +218,28 @@ exports.postComment = async (req, res) => {
   }
 };
 
-exports.getCommentsByBlogId = async (req, res) => {
+exports.getApprovedCommentsByBlogId = async (req, res) => {
   try {
     const { blogId } = req.params;
-    const all = req.query.all === "true"; // 👈 convert string to boolean
 
-    const filter = { blogId };
-    if (!all) {
-      filter.status = "approved"; // Website me sirf approved comments dikhane ke liye
-    }
+    const comments = await Comment.find({ blogId, status: "approved" }).sort({ createdAt: -1 });
 
-    const comments = await Comment.find(filter).sort({ createdAt: -1 });
     res.status(200).json(comments);
   } catch (error) {
-    console.error("Error fetching comments:", error);
+    console.error("Error fetching approved comments:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getAllCommentsByBlogId = async (req, res) => {
+  try {
+    const { blogId } = req.params;
+
+    const comments = await Comment.find({ blogId:blogId }).sort({ createdAt: -1 });
+
+    res.status(200).json(comments);
+  } catch (error) {
+    console.error("Error fetching all comments:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -255,6 +263,23 @@ exports.approveComment = async (req, res) => {
   }
 };
 
+exports.rejectComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+
+    const comment = await Comment.findOne({_id:commentId});
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+    await Comment.findByIdAndDelete(commentId);
+
+    res.status(200).json({ message: "Comment rejected and permanently deleted" });
+  } catch (error) {
+    console.error("Error rejecting comment:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 exports.replyToComment = async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -269,7 +294,6 @@ exports.replyToComment = async (req, res) => {
       return res.status(404).json({ message: "Comment not found" });
     }
 
-    // Push the reply to the replies array
     comment.replies.push({
       message,
       createdAt: new Date(),
