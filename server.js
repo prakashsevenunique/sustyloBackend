@@ -23,17 +23,19 @@ dotenv.config();
 const mainWalletRoutes = require("./routes/mainWallatRoute.js");
 
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ MongoDB Connected Successfully"))
-    .catch((err) => {
-        console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1);
-    });
+.then(() => console.log("✅ MongoDB Connected Successfully"))
+.catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
+    process.exit(1);
+});
 
 require('./services/bookingReminderCron');
 const app = express();
 const path = require("path");
+
+app.use(cors());
+
 app.use(express.json());
-app.use(cors('*'));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ✅ Reliable
 

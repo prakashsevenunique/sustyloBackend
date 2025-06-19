@@ -38,13 +38,32 @@ const upload = multer({
 // Create Blog with Image Upload
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, category, imageUrl } = req.body;
+    const {
+      title,
+      content,
+      category,
+      imageUrl,
+      summary,
+      metaTitle,
+      metaDescription,
+      metaKeywords, // Expected as an array
+    } = req.body;
 
     if (!title || !content || !category) {
       return res.status(400).json({ message: "Title, content, and category are required" });
     }
 
-    const blog = new Blog({ title, content, category, imageUrl });
+    const blog = new Blog({
+      title,
+      content,
+      category,
+      imageUrl,
+      summary,
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+    });
+
     await blog.save();
 
     res.status(201).json({
