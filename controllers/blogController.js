@@ -83,9 +83,8 @@ exports.uploadInlineImage = (req, res) => {
     if (!req.file)
       return res.status(400).json({ message: "No image uploaded" });
 
-    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/blogs/${
-      req.file.filename
-    }`;
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/blogs/${req.file.filename
+      }`;
     res.status(200).json({ url: imageUrl }); // response format for TinyMCE
   });
 };
@@ -110,6 +109,27 @@ exports.getBlogById = async (req, res) => {
     res.status(200).json(blog);
   } catch (error) {
     console.error("Error fetching blog:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getBlogBySlug = async (req, res) => {
+  try {
+    const { slug } = req.query;
+
+    if (!slug) {
+      return res.status(400).json({ message: "Missing slug" });
+    }
+
+    const blog = await Blog.findOne({ slug: { $regex: slug, $options: 'i' } }); // case-insensitive search
+
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    res.status(200).json(blog);
+  } catch (error) {
+    console.error("Error fetching blog by slug:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -254,7 +274,7 @@ exports.getAllCommentsByBlogId = async (req, res) => {
   try {
     const { blogId } = req.params;
 
-    const comments = await Comment.find({ blogId:blogId }).sort({ createdAt: -1 });
+    const comments = await Comment.find({ blogId: blogId }).sort({ createdAt: -1 });
 
     res.status(200).json(comments);
   } catch (error) {
@@ -286,7 +306,7 @@ exports.rejectComment = async (req, res) => {
   try {
     const { commentId } = req.params;
 
-    const comment = await Comment.findOne({_id:commentId});
+    const comment = await Comment.findOne({ _id: commentId });
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
