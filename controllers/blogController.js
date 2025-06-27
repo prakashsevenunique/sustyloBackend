@@ -112,27 +112,7 @@ exports.getAllBlogs = async (req, res) => {
 };
 
 // Get Single Blog
-exports.getBlogBySlug = async (req, res) => {
-  const slug = req.params.slug;
 
-  // Basic validation for slug
-  if (!slug || typeof slug !== "string" || slug.trim() === "") {
-    return res.status(400).json({ message: "Invalid or missing blog slug" });
-  }
-
-  try {
-    const blog = await Blog.findOne({ slug: slug.trim() });
-
-    if (!blog) {
-      return res.status(404).json({ message: "Blog not found" });
-    }
-
-    res.status(200).json(blog);
-  } catch (error) {
-    console.error("Error fetching blog by slug:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
 
 exports.getBlogBySlug = async (req, res) => {
   try {

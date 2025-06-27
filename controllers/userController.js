@@ -351,6 +351,11 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if(id){
+      return res.json({message:"pahle id daal fir api fetch kr"})
+    }
+    
     const user = await User.findById(id).populate("wallet");
 
     if (!user) return res.status(404).json({ error: "User not found" });

@@ -4,7 +4,8 @@ const router = express.Router();
 const {
   createBlog,
   getAllBlogs,
-  getBlogById,
+  getBlogBySlug,
+  // getBlogById,
   updateBlog,
   deleteBlog,
   getBlogsByCategory,
@@ -13,8 +14,7 @@ const {
   getAllCommentsByBlogId,
   approveComment,
   replyToComment,
-  rejectComment,
-  getBlogBySlug
+  rejectComment
 } = require("../controllers/blogController");
 
 // Blog routes
