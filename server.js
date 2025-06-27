@@ -42,6 +42,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ✅ Rel
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/salon", salonRoutes);
+
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/schedule", scheduleRoutes);
