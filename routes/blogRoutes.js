@@ -21,7 +21,7 @@ const {
 router.post("/createBlog", createBlog);
 router.get("/all", getAllBlogs);
 router.get("/slug", getBlogBySlug);
-router.get("/:id", getBlogById);
+// router.get("/:id", getBlogById);
 router.put("/update/:id", updateBlog);
 router.delete("/delete/:id", deleteBlog);
 router.get("/blogs/category/:category", getBlogsByCategory);

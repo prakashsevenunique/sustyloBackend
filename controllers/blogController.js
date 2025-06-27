@@ -36,6 +36,14 @@ const upload = multer({
 }).single("blogImage"); // Field name should be "image" in Postman
 
 // Create Blog with Image Upload
+// Optional: You can use an external slugify package if preferred
+const slugify = (text) =>
+  text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-'); // Replaces spaces & special chars with -
+
 exports.createBlog = async (req, res) => {
   try {
     const {
@@ -53,8 +61,11 @@ exports.createBlog = async (req, res) => {
       return res.status(400).json({ message: "Title, content, and category are required" });
     }
 
+    const slug = slugify(title);
+
     const blog = new Blog({
       title,
+      slug, // Add slug here
       content,
       category,
       imageUrl,
@@ -75,6 +86,7 @@ exports.createBlog = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 exports.uploadInlineImage = (req, res) => {
   uploadInlineImage(req, res, (err) => {
@@ -100,15 +112,24 @@ exports.getAllBlogs = async (req, res) => {
 };
 
 // Get Single Blog
-exports.getBlogById = async (req, res) => {
+exports.getBlogBySlug = async (req, res) => {
+  const slug = req.params.slug;
+
+  // Basic validation for slug
+  if (!slug || typeof slug !== "string" || slug.trim() === "") {
+    return res.status(400).json({ message: "Invalid or missing blog slug" });
+  }
+
   try {
-    const blog = await Blog.findById(req.params.id);
+    const blog = await Blog.findOne({ slug: slug.trim() });
+
     if (!blog) {
       return res.status(404).json({ message: "Blog not found" });
     }
+
     res.status(200).json(blog);
   } catch (error) {
-    console.error("Error fetching blog:", error);
+    console.error("Error fetching blog by slug:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
